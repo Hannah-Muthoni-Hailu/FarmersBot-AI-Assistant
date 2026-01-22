@@ -1,42 +1,181 @@
-<PageOne>:
+# reusable background template for a "card"
+<CardTemplate@BoxLayout>:
+    is_login_mode: False
+    toggle_mode: lambda *args: None
+    orientation: 'vertical'
+    size_hint: (None, None)
+    size: (400, 400)
+    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+    padding: 10
+    canvas.before:
+        Color:
+            rgba: (96/255), (119/255), (68/255), 1 
+        RoundedRectangle:
+            size: self.size
+            pos: self.pos
+            radius: [20, 20, 20, 20] 
+    
+    # User name input
+    Label:
+        text: "Enter Username:"
+        color: 0, 0, 0, 1
+        size_hint_y: None
+        height: 30
+        text_size: self.size
+        halign: 'left'
+        valign: 'middle'
+        padding_x: 35
+   
+    TextInput:
+        id: username_input
+        multiline: False
+        size_hint_y: None
+        height: 40
+        size_hint_x: 0.8
+        pos_hint: {'center_x': 0.5}
+
+    # Spacer (pushes the card down)
+    Widget:
+        size_hint_y: 0.01
+
+    # Password input
+    Label:
+        text: "Enter Password:"
+        color: 0, 0, 0, 1
+        size_hint_y: None
+        height: 30
+        text_size: self.size
+        halign: 'left'
+        valign: 'middle'
+        padding_x: 35
+   
+    TextInput:
+        id: password_input
+        multiline: False
+        size_hint_y: None
+        height: 40
+        size_hint_x: 0.8
+        pos_hint: {'center_x': 0.5}
+    
+    # Spacer (pushes the card down)
+    Widget:
+        size_hint_y: 0.3
+
     BoxLayout:
+        id: input_type_container
         orientation: "vertical"
-        padding: 40
-        spacing: 20
+        size_hint_y: None
+        # Use the logic on the parent so the label AND checkboxes hide together
+        height: 0 if root.is_login_mode else 70 
+        opacity: 0 if root.is_login_mode else 1
+        disabled: root.is_login_mode
+        spacing: 5
 
         Label:
-            text: "Hello, Kivy!"
-            font_size: 32
+            text: "Select your preferred input type"
+            color: 0, 0, 0, 1
+            size_hint_y: None
+            height: 30
+            text_size: self.size
+            halign: 'left'
+            valign: 'middle'
+            padding_x: 35
 
-        Button:
-            text: "Next"
-            on_press: root.manager.current = "page2"
+        BoxLayout:
+            id: input_type_row
+            orientation: "horizontal"
+            size_hint_y: None
+            height: 40
+            size_hint_x: 0.8
+            pos_hint: {'center_x': 0.5}
 
+            Label:
+                text: "Audio"
+                color: 0,0,0,1
+            CheckBox:
+                group: "input"
+            Label:
+                text: "Text"
+                color: 0,0,0,1
+            CheckBox:
+                group: "input"
+    
+    # Spacer (pushes the card down)
+    Widget:
+        size_hint_y: 0.5
+    
+    # Send Button
+    Button:
+        id: send_button
+        text: "SEND"
+        size_hint: (0.8, None)
+        height: 50
+        pos_hint: {'center_x': 0.5}
+        background_color: 0,0,0,0
+        background_normal: ''
+        canvas.before:
+            Color:
+                rgba: (179/255, 156/255, 77/255, 1)
+            RoundedRectangle:
+                size: self.size
+                pos: self.pos
+                radius: [15]
+    
+    # Spacer
+    Widget:
+        size_hint_y: 0.1
 
-<PageTwo>:
+    Button:
+        id: toggle_mode_button
+        background_color: 0,0,0,0
+        color: 0, 0, 1, 1 # Blue link color
+        text:
+            "Already have an account? Login here" if not root.is_login_mode \
+            else "Don't have an account? Signup here"
+        on_release:
+            root.toggle_mode()
+
+    # Spacer
+    Widget:
+        size_hint_y: 0.1
+
+<SignupPage>:
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
     BoxLayout:
         orientation: "vertical"
-        padding: 40
-        spacing: 20
+        size: root.size
+        pos: root.pos
 
-        Label:
-            text: "Hello, Kivy!"
-            font_size: 32
+        # Green Horizontal Bar (top)
+        BoxLayout:
+            id: top_bar
+            size_hint_y: None
+            height: 50
+            canvas.before:
+                Color:
+                    rgba: (96/255), (119/255), (68/255), 1 
+                Rectangle:
+                    size: self.size
+                    pos: self.pos
+        
+        # Spacer (pushes the card down)
+        Widget:
+            size_hint_y: 0.5
 
-        Button:
-            text: "Next"
-            on_press: root.manager.current = "page3"
+        # Green Card (centered)
+        CardTemplate:
+            id: signup_card
+            is_login_mode: root.is_login_mode
+            toggle_mode: root.toggle_mode
+            # Reuses the CardTemplate style
 
-<PageThree>:
-    BoxLayout:
-        orientation: "vertical"
-        padding: 40
-        spacing: 20
+        # Spacer (pushes the card up)
+        Widget:
+            size_hint_y: 0.5
 
-        Label:
-            text: "Hello, Kivy!"
-            font_size: 32
-
-        Button:
-            text: "Next"
-            
