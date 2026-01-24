@@ -1,14 +1,8 @@
-'''
-Steps:
-    - The page can differentiate between when the user is logging in and when they are signing up
-    - If the user is logging in, the page contains a place to enter a name and password
-    - If they are signing up, the page has an additional input that allows the user to choose audio or text-based interaction
-'''
-
 import unittest
 from main import ChatApp
 from kivy.lang import Builder
 from kivy.graphics import Color
+from kivy.graphics import RoundedRectangle
 
 class TestChatApp(unittest.TestCase):
     def setUp(self):
@@ -85,11 +79,8 @@ class TestChatApp(unittest.TestCase):
         self.assertTrue(len(btn_colors) > 0, "No Color instruction found in btn canvas")
         
         # Get the RGBA values from the first Color instruction
-        actual_rgba = btn_colors[0].rgba
-        expected_rgba = [179/255, 156/255, 77/255, 1]
             
         # 3. Roundness check
-        from kivy.graphics import RoundedRectangle
         has_round = any(isinstance(ins, RoundedRectangle) for ins in btn.canvas.before.children)
         self.assertTrue(has_round, "Button should have rounded corners")
 
@@ -115,9 +106,32 @@ class TestChatApp(unittest.TestCase):
         self.assertFalse(signup_page.is_login_mode)
         self.assertIn("Login here", toggle_btn.text)
 
+    def test_audioinput_page_exists(self):
+        self.assertTrue(self.sm.has_screen("audioinput"))
+
+    def test_audiopage_properties(self):
+        audio_page = self.sm.get_screen("audioinput")
+
+        # Test the audio page has a button for recording audio
+        self.assertIn('record_audio', audio_page.ids)
+
+        # Test the audio page has a button for capturing images
+        self.assertIn('capture', audio_page.ids)
+
+    def test_audioinput_page_exists(self):
+        self.assertTrue(self.sm.has_screen("textinput"))
+
+    def test_textpage_properties(self):
+        text_page = self.sm.get_screen("textinput")
+
+        # Test the text page has a text input panel
+        self.assertIn('input_panel', text_page.ids)
+
+        # Test the input panel has a send button and image capturing button
+        self.assertIn('message_input', text_page.ids)
+        self.assertIn('send', text_page.ids)
+        self.assertIn('capture', text_page.ids)
     
 
 if __name__ == "__main__":
     unittest.main()
-
-# python3 test_main.py

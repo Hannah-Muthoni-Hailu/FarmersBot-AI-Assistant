@@ -113,6 +113,7 @@
         pos_hint: {'center_x': 0.5}
         background_color: 0,0,0,0
         background_normal: ''
+        on_press: app.root.current = "audioinput"
         canvas.before:
             Color:
                 rgba: (179/255, 156/255, 77/255, 1)
@@ -179,3 +180,136 @@
         Widget:
             size_hint_y: 0.5
 
+<AudioInput>:
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+    BoxLayout:
+        orientation: "vertical"
+        size: root.size
+        pos: root.pos
+
+        # Green Horizontal Bar (top)
+        BoxLayout:
+            id: top_bar
+            size_hint_y: None
+            height: 50
+            canvas.before:
+                Color:
+                    rgba: (96/255), (119/255), (68/255), 1 
+                Rectangle:
+                    size: self.size
+                    pos: self.pos
+
+        RelativeLayout:
+            Button:
+                id: record_audio
+                text: "Record audio"
+                size_hint: (None, None)
+                size: (300, 300)
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                background_color: 0, 0, 0, 0
+                
+                canvas.before:
+                    Color:
+                        rgba: (96/255), (119/255), (68/255), 1
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [150] 
+
+        Button:
+            id: capture
+            text: "CAPTURE"
+            size_hint: (0.2, None)
+            height: 50
+            pos_hint: {'right': 1}
+            background_color: 0,0,0,0
+            background_normal: ''
+            on_press: app.root.current = "textinput"
+            canvas.before:
+                Color:
+                    rgba: (179/255, 156/255, 77/255, 1)
+                RoundedRectangle:
+                    size: self.size
+                    pos: self.pos
+                    radius: [15]
+
+<TextInputScreen>:
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+    BoxLayout:
+        orientation: "vertical"
+        size: root.size
+        pos: root.pos
+
+        # Green Horizontal Bar (top)
+        BoxLayout:
+            id: top_bar
+            size_hint_y: None
+            height: 50
+            canvas.before:
+                Color:
+                    rgba: (96/255), (119/255), (68/255), 1 
+                Rectangle:
+                    size: self.size
+                    pos: self.pos
+
+        Widget: 
+            size_hint_y: 1
+
+        BoxLayout:
+            id: input_panel
+            orientation: "horizontal"
+            size_hint_y: None
+            height: 60
+            padding: 10
+            spacing: 10
+            canvas.before:
+                Color:
+                    rgba: (240/255), (240/255), (240/255), 1 # Light grey background
+                Rectangle:
+                    size: self.size
+                    pos: self.pos
+
+            TextInput:
+                id: message_input
+                hint_text: "Type your message here..."
+                multiline: False
+                size_hint_x: 0.8
+
+            Button:
+                id: send
+                text: "Send"
+                size_hint_x: 0.2
+                background_color: 0,0,0,0
+                canvas.before:
+                    Color:
+                        rgba: (179/255, 156/255, 77/255, 1)
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [10]
+                on_press: print(f"Sent: {message_input.text}")
+
+            Button:
+                id: capture
+                text: "Capture"
+                size_hint_x: 0.2
+                background_color: 0,0,0,0
+                canvas.before:
+                    Color:
+                        rgba: (179/255, 156/255, 77/255, 1)
+                    RoundedRectangle:
+                        size: self.size
+                        pos: self.pos
+                        radius: [10]
