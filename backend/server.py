@@ -1,38 +1,24 @@
-'''
-1. Recieve input from frontend
-2. If audio, pass to audio to text model and return text
-3. Send audio to intent identification function
-    - Determine intent (general conversation, crop simulation, nutrient/pest/disease identification)
-    - Send data to relevant model
-    - Obtain response
-    - If user is text-based, send response to frontent
-    - If user is audio-based:
-        - Send response to text-to-audio model then send response to frontend
-4. Model functions:
-    - Crop simulator
-    - Nutrient/pest/disease identification
-        - Obtains image
-'''
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import uvicorn
+# uvicorn server:app --reload
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Data validation model
+class UserSignup(BaseModel):
+    username: str
+    password: str
+    input_type: str  # Expecting "audio" or "text"
 
-@app.post("/chat/input")
-async def chat_input(req):
-    user_input = req.input
-    input_type = req.type
+@app.post("/signup")
+async def signup(user: UserSignup):
+    # This logic only runs if Pydantic validation passes
+    print(f"New Signup: {user.username} with preference {user.input_type}")
+    
+    # You can add further backend checks here (e.g., if user exists)
+    return {"status": "success", "message": "User registered successfully"}
 
-    if type == 'text':
-        return {"reply": "Text input in use."}
-    else:
-        return {"reply": "Audio input in use."}
+if __name__ == "__main__":
+    # Run server on http://127.0.0.1:8000
+    uvicorn.run(app, host="127.0.0.1", port=8000)

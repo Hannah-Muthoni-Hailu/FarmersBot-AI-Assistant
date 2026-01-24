@@ -1,15 +1,63 @@
-from kivy.config import Config
+# from kivy.config import Config
 
-# Enable debug outlines
-Config.set("graphics", "debug", "1")
+# # Enable debug outlines
+# Config.set("graphics", "debug", "1")
 
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.properties import BooleanProperty
+import requests
+
+from kivy.uix.textinput import TextInput
+
+class FocusTextInput(TextInput):
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            self.focus = True
+        return super().on_touch_down(touch)
+
 
 class SignupPage(Screen):
     is_login_mode = BooleanProperty(False)
+
+    def process_signup(self):
+        card = self.ids.signup_card
+        username = card.ids.username_input.text
+        password = card.ids.password_input.text
+        
+        # Determine preference based on checkbox active state
+        input_type = "audio" if card.ids.audio_check.active else "text"
+
+        # Ensure fields aren't empty
+        if not username or not password:
+            print("Frontend Error: Username and Password are required.")
+            return
+        
+        try:
+            payload = {
+                "username": username,
+                "password": password,
+                "input_type": input_type
+            }
+            # FastAPI's default port is 8000
+            # response = requests.post("http://127.0.0.1", json=payload, timeout=5)
+            response = requests.post(
+                "http://127.0.0.1:8000/signup",
+                json=payload,
+                timeout=5
+            )
+
+            if response.status_code == 200:
+                # 3. Conditional Navigation on success
+                if input_type == "audio":
+                    self.manager.current = "audioinput"
+                else:
+                    self.manager.current = "textinput"
+            else:
+                print(f"Server rejected: {response.json()}")
+        except Exception as e:
+            print(f"Connection failed: {e}")
 
     def toggle_mode(self):
         self.is_login_mode = not self.is_login_mode

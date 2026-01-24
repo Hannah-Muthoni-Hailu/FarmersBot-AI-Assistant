@@ -1,3 +1,7 @@
+<FocusTextInput@TextInput>:
+    on_touch_down:
+        self.focus = True
+
 # reusable background template for a "card"
 <CardTemplate@BoxLayout>:
     is_login_mode: False
@@ -26,9 +30,10 @@
         valign: 'middle'
         padding_x: 35
    
-    TextInput:
+    FocusTextInput:
         id: username_input
         multiline: False
+        focus: True if self.collide_point(*self.parent.to_window(*self.pos)) else False
         size_hint_y: None
         height: 40
         size_hint_x: 0.8
@@ -49,9 +54,10 @@
         valign: 'middle'
         padding_x: 35
    
-    TextInput:
+    FocusTextInput:
         id: password_input
         multiline: False
+        focus: True if self.collide_point(*self.parent.to_window(*self.pos)) else False
         size_hint_y: None
         height: 40
         size_hint_x: 0.8
@@ -93,11 +99,13 @@
                 text: "Audio"
                 color: 0,0,0,1
             CheckBox:
+                id: audio_check
                 group: "input"
             Label:
                 text: "Text"
                 color: 0,0,0,1
             CheckBox:
+                id: text_check
                 group: "input"
     
     # Spacer (pushes the card down)
@@ -113,7 +121,7 @@
         pos_hint: {'center_x': 0.5}
         background_color: 0,0,0,0
         background_normal: ''
-        on_press: app.root.current = "audioinput"
+        on_press: root.parent.parent.process_signup()
         canvas.before:
             Color:
                 rgba: (179/255, 156/255, 77/255, 1)
@@ -281,7 +289,7 @@
                     size: self.size
                     pos: self.pos
 
-            TextInput:
+            FocusTextInput:
                 id: message_input
                 hint_text: "Type your message here..."
                 multiline: False

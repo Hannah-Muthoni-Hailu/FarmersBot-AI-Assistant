@@ -3,12 +3,14 @@ from main import ChatApp
 from kivy.lang import Builder
 from kivy.graphics import Color
 from kivy.graphics import RoundedRectangle
+from unittest.mock import patch, MagicMock
 
 class TestChatApp(unittest.TestCase):
     def setUp(self):
         Builder.load_file('chat.kv') 
         self.app = ChatApp()
         self.sm = self.app.build()
+        self.app.root = self.sm
 
     def test_signup_page_exists(self):
         self.assertTrue(self.sm.has_screen("signuppage"))
@@ -131,6 +133,50 @@ class TestChatApp(unittest.TestCase):
         self.assertIn('message_input', text_page.ids)
         self.assertIn('send', text_page.ids)
         self.assertIn('capture', text_page.ids)
+
+    # Test audio navigation
+    @patch("main.requests.post")
+    def test_audio_input_navigates_to_audio_screen(self, mock_post):
+        mock_post.return_value.status_code = 200
+
+        signup_page = self.sm.get_screen("signuppage")
+        card = signup_page.ids.signup_card
+
+        card.ids.username_input.text = "testuser"
+        card.ids.password_input.text = "testpass"
+
+        card.ids.audio_check.active = True
+        card.ids.text_check.active = False
+
+        card.ids.send_button.dispatch("on_press")
+
+        self.assertEqual(self.sm.current, "audioinput")
+
+    # Test text-based input navigation
+    @patch("main.requests.post")
+    def test_text_input_navigates_to_text_screen(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {}
+        mock_post.return_value = mock_response
+
+
+        signup_page = self.sm.get_screen("signuppage")
+        card = signup_page.ids.signup_card
+
+        card.ids.username_input.text = "testuser"
+        card.ids.password_input.text = "testpass"
+
+        # Simulate user selecting text
+        card.ids.audio_check.active = False
+        card.ids.text_check.active = True
+
+        # Simulate clicking SEND
+        card.ids.send_button.dispatch("on_press")
+
+        # Assert navigation
+        self.assertEqual(self.sm.current, "textinput")
+
     
 
 if __name__ == "__main__":
