@@ -34,6 +34,9 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
+class UserMessage(BaseModel):
+    message: str
+
 @app.post("/signup")
 async def signup(data: UserSignup, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == data.username).first():
@@ -72,6 +75,44 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
 
     return {"access_token": token, "input_type": user.input_type}
 
+@app.post("/message")
+def handle_message(data: UserMessage):
+    reply = handle_intent(data.message)
+    return {"reply": reply}
+
+def handle_intent(text):
+    pass
+
+
 if __name__ == "__main__":
     # Run server on http://127.0.0.1:8000
     uvicorn.run(app, host="127.0.0.1", port=8000)
+
+'''
+text_input:
+    - Intent handling:
+        - If intent is crop growth simulation -> send to crop_simulation
+        - If intent is crop growth analysis
+            - request image
+            - pass image through all the models
+            - identify response
+                - for each result from the models
+                    - if no return "No disease/pest/nutrition deficiency identified"
+                    - if anything is detected, use the database to find cure and send it in a statement like
+                    "The model identified the following issues:
+                        - name of pest/disease/nutrition deficiency - prescription"
+        - If intent is general conversation - pass to general conversation model but ensure conversations are limited
+
+audio_input:
+    - pass to audio to text model:
+    - send to intent handling process:
+    - get response and send to text to audio to return to user
+
+Tasks:
+1. Create function that receives text input
+    - receives input
+    - send to handle_intent function
+
+2. Perform intent handling (function receives text):
+
+'''

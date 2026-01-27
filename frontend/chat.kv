@@ -284,6 +284,10 @@
                     size: self.size
                     pos: self.pos
 
+        RecycleView:
+            MDList:
+                id: chat_list
+
         Widget: 
             size_hint_y: 1
 
@@ -319,7 +323,7 @@
                         size: self.size
                         pos: self.pos
                         radius: [10]
-                on_press: print(f"Sent: {message_input.text}")
+                on_press: root.send_message()
 
             Button:
                 id: capture

@@ -4,12 +4,14 @@
 # Config.set("graphics", "debug", "1")
 
 from kivy.app import App
+from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.properties import BooleanProperty, StringProperty
 import requests
 
 from kivy.uix.textinput import TextInput
+from kivymd.uix.list import OneLineListItem
 
 class FocusTextInput(TextInput):
     def on_touch_down(self, touch):
@@ -92,9 +94,45 @@ class AudioInput(Screen):
     pass
 
 class TextInputScreen(Screen):
-    pass
+    def send_message(self):
+        message = self.ids.message_input.text.strip()
+        try:
+            self.ids.chat_list.add_widget(
+                OneLineListItem(text=f"You: {message}")
+            )
+        except Exception as e:
+            print("Failed to update chat list:", e)
 
-class ChatApp(App):
+        if not message:
+            return
+
+        try:
+            response = requests.post(
+                "http://127.0.0.1:8000/message",
+                json={"message": message},
+                timeout=5
+            )
+
+            if response.status_code == 200:
+                reply = response.json()["reply"]
+                print("Server replied:", reply)
+                self.show_reply(reply)
+
+        except Exception:
+            print("Failed to send message")
+
+    def show_reply(self, reply):
+        print(reply)
+        self.response = reply
+        try:
+            self.ids.chat_list.add_widget(
+                OneLineListItem(text=f"Bot: {reply}")
+            )
+            self.ids.message_input.text = ""
+        except Exception as e:
+            print("Failed to update chat list:", e)
+
+class ChatApp(MDApp):
     def build(self):
         sm = ScreenManager()
         sm.add_widget(SignupPage(name="signuppage"))
