@@ -6,7 +6,7 @@
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.properties import BooleanProperty
+from kivy.properties import BooleanProperty, StringProperty
 import requests
 
 from kivy.uix.textinput import TextInput
@@ -20,8 +20,10 @@ class FocusTextInput(TextInput):
 
 class SignupPage(Screen):
     is_login_mode = BooleanProperty(False)
+    error_message = StringProperty("")
 
     def process_signup(self):
+        self.error_message = ""
         card = self.ids.signup_card
         username = card.ids.username_input.text
         password = card.ids.password_input.text
@@ -31,8 +33,11 @@ class SignupPage(Screen):
 
         # Ensure fields aren't empty
         if not username or not password:
-            print("Frontend Error: Username and Password are required.")
+            self.error_message = "Username and password are required"
             return
+        
+        if len(password) > 256:
+            self.error_message = "Password too long"
         
         try:
             payload = {
@@ -55,9 +60,30 @@ class SignupPage(Screen):
                 else:
                     self.manager.current = "textinput"
             else:
-                print(f"Server rejected: {response.json()}")
+                self.error_message = response.json().get("detail", "Signup failed")
         except Exception as e:
-            print(f"Connection failed: {e}")
+            self.error_message = "Cannot connect to server"
+
+    def process_login(self):
+        self.error_message = ""
+        card = self.ids.signup_card
+        username = card.ids.username_input.text
+        password = card.ids.password_input.text
+
+        response = requests.post(
+            "http://127.0.0.1:8000/login",
+            json={"username": username, "password": password}
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if data["input_type"] == "audio":
+                self.manager.current = "audioinput"
+            else:
+                self.manager.current = "textinput"
+        else:
+            self.error_message = response.json().get("detail", "Signup failed")
+
 
     def toggle_mode(self):
         self.is_login_mode = not self.is_login_mode

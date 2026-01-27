@@ -111,6 +111,16 @@
     # Spacer (pushes the card down)
     Widget:
         size_hint_y: 0.5
+
+    Label:
+        text: root.parent.parent.error_message
+        color: 1, 0, 0, 1
+        size_hint_y: None
+        height: 30
+        text_size: self.size
+        halign: "center"
+        valign: "middle"
+
     
     # Send Button
     Button:
@@ -121,7 +131,9 @@
         pos_hint: {'center_x': 0.5}
         background_color: 0,0,0,0
         background_normal: ''
-        on_press: root.parent.parent.process_signup()
+        on_press: 
+            root.parent.parent.process_signup() if not root.is_login_mode \
+            else root.parent.parent.process_login()
         canvas.before:
             Color:
                 rgba: (179/255, 156/255, 77/255, 1)
