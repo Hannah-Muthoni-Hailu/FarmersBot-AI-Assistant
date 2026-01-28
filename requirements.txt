@@ -12,3 +12,4 @@ joblib
 numpy
 scipy
 pandas
+opencv-python

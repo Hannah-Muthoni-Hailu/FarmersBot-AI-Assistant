@@ -31,6 +31,8 @@ app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "ai_models", "best_intent_model.joblib")
 
+IMAGE = None
+
 intent_model = joblib.load(MODEL_PATH)
 intent = None
 
@@ -68,6 +70,9 @@ class UserLogin(BaseModel):
 
 class UserMessage(BaseModel):
     message: str
+
+class UserImage(BaseModel):
+    image: str
 
 @app.post("/signup")
 async def signup(data: UserSignup, db: Session = Depends(get_db)):
@@ -122,6 +127,17 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
 @app.post("/message")
 def handle_message(data: UserMessage):
     reply = handle_intent(data.message.lower())
+    return {"reply": reply}
+
+@app.post("/image")
+def handle_image(data: UserImage):
+    global IMAGE
+    global intent
+
+    IMAGE = data.image
+    intent = 'crop_growth_analysis'
+    reply = handle_intent('')
+
     return {"reply": reply}
 
 def get_simulation_data(text, crop_sim_data):
@@ -237,6 +253,12 @@ def run_simulation():
     return f"Your expected output is {yeild} kg/ha."
     # return yeild
 
+def analyze_image():
+   global intent
+   intent = None
+
+   return "Thankyou for the image"
+
 def handle_intent(text):
     global intent
     global crop_sim_data
@@ -253,10 +275,19 @@ def handle_intent(text):
             reply = run_simulation()
 
         return reply
+
+    elif intent == "crop_growth_analysis":
+        if not IMAGE:
+           reply = "Please provide an image"
+        else:
+           reply = analyze_image()
+
+        return reply
+    else:
+       intent = None
+       reply = "Hello. Welcome"
     
-    results = intent
-    intent = None
-    return results
+    return reply
 
 
 if __name__ == "__main__":
