@@ -1,0 +1,31 @@
+** $Id: Likuyani_soil.new 1.0 2025/11/20 00:00:00 Generated $
+**
+** SOIL DATA FILE for use with WOFOST Version 5.0
+**
+** Likuyani_soil
+
+SOLNAM='Likuyani_soil'
+
+** physical soil characteristics 
+
+** soil water retention
+SMTAB    =  -1.000,   0.3617109644312881,    ! vol. soil moisture content
+             2.000,   0.23449025041975924,    ! as function of pF [log (cm); cm3 cm-3]
+             4.200,   0.26575634306228124
+SMW      =   0.26575634306228124  !  soil moisture content at wilting point [cm3/cm3]
+SMFCF    =   0.23449025041975924  !  soil moisture content at field capacity [cm3/cm3]
+SM0      =   0.3617109644312881  !  soil moisture content at saturation [cm3/cm3]
+CRAIRC   =   0.06  ! critical soil air content for aeration [cm3/cm3]
+
+** hydraulic conductivity
+K0       =  7.546652034588131  ! hydraulic conductivity of saturated soil [cm day-1]
+SOPE     =   3.7733260172940657   ! maximum percolation rate root zone[cm day-1]
+KSUB     =   1.5093304069176263   ! maximum percolation rate subsoil [cm day-1]
+RDMSOL   =   80     ! maximum soil rootable depth [cm]
+
+** soil workability parameters
+SPADS    =   0.1  !  1st topsoil seepage parameter deep seedbed
+SPODS    =   0.03  !  2nd topsoil seepage parameter deep seedbed
+SPASS    =   0.2  !  1st topsoil seepage parameter shallow seedbed
+SPOSS    =   0.05  !  2nd topsoil seepage parameter shallow seedbed
+DEFLIM   =  -0.3  !  required moisture deficit deep seedbed

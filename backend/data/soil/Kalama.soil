@@ -1,0 +1,31 @@
+** $Id: Kalama_soil.new 1.0 2025/11/20 00:00:00 Generated $
+**
+** SOIL DATA FILE for use with WOFOST Version 5.0
+**
+** Kalama_soil
+
+SOLNAM='Kalama_soil'
+
+** physical soil characteristics 
+
+** soil water retention
+SMTAB    =  -1.000,   0.2760221323442635,    ! vol. soil moisture content
+             2.000,   0.16348009619916726,    ! as function of pF [log (cm); cm3 cm-3]
+             4.200,   0.2292454139378125
+SMW      =   0.2292454139378125  !  soil moisture content at wilting point [cm3/cm3]
+SMFCF    =   0.16348009619916726  !  soil moisture content at field capacity [cm3/cm3]
+SM0      =   0.2760221323442635  !  soil moisture content at saturation [cm3/cm3]
+CRAIRC   =   0.06  ! critical soil air content for aeration [cm3/cm3]
+
+** hydraulic conductivity
+K0       =  4.892369356774749  ! hydraulic conductivity of saturated soil [cm day-1]
+SOPE     =   2.4461846783873744   ! maximum percolation rate root zone[cm day-1]
+KSUB     =   0.9784738713549498   ! maximum percolation rate subsoil [cm day-1]
+RDMSOL   =   80     ! maximum soil rootable depth [cm]
+
+** soil workability parameters
+SPADS    =   0.1  !  1st topsoil seepage parameter deep seedbed
+SPODS    =   0.03  !  2nd topsoil seepage parameter deep seedbed
+SPASS    =   0.2  !  1st topsoil seepage parameter shallow seedbed
+SPOSS    =   0.05  !  2nd topsoil seepage parameter shallow seedbed
+DEFLIM   =  -0.3  !  required moisture deficit deep seedbed

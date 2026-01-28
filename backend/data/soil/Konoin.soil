@@ -1,0 +1,31 @@
+** $Id: Konoin_soil.new 1.0 2025/11/20 00:00:00 Generated $
+**
+** SOIL DATA FILE for use with WOFOST Version 5.0
+**
+** Konoin_soil
+
+SOLNAM='Konoin_soil'
+
+** physical soil characteristics 
+
+** soil water retention
+SMTAB    =  -1.000,   0.42795358957231344,    ! vol. soil moisture content
+             2.000,   0.23629859885749346,    ! as function of pF [log (cm); cm3 cm-3]
+             4.200,   0.26718996637176246
+SMW      =   0.26718996637176246  !  soil moisture content at wilting point [cm3/cm3]
+SMFCF    =   0.23629859885749346  !  soil moisture content at field capacity [cm3/cm3]
+SM0      =   0.42795358957231344  !  soil moisture content at saturation [cm3/cm3]
+CRAIRC   =   0.06  ! critical soil air content for aeration [cm3/cm3]
+
+** hydraulic conductivity
+K0       =  25.216333607055198  ! hydraulic conductivity of saturated soil [cm day-1]
+SOPE     =   12.608166803527599   ! maximum percolation rate root zone[cm day-1]
+KSUB     =   5.04326672141104   ! maximum percolation rate subsoil [cm day-1]
+RDMSOL   =   80     ! maximum soil rootable depth [cm]
+
+** soil workability parameters
+SPADS    =   0.1  !  1st topsoil seepage parameter deep seedbed
+SPODS    =   0.03  !  2nd topsoil seepage parameter deep seedbed
+SPASS    =   0.2  !  1st topsoil seepage parameter shallow seedbed
+SPOSS    =   0.05  !  2nd topsoil seepage parameter shallow seedbed
+DEFLIM   =  -0.3  !  required moisture deficit deep seedbed

@@ -12,4 +12,5 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     input_type = Column(String, nullable=False)
+    subcounty = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

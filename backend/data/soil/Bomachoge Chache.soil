@@ -1,0 +1,31 @@
+** $Id: Bomachoge Chache_soil.new 1.0 2025/11/20 00:00:00 Generated $
+**
+** SOIL DATA FILE for use with WOFOST Version 5.0
+**
+** Bomachoge Chache_soil
+
+SOLNAM='Bomachoge Chache_soil'
+
+** physical soil characteristics 
+
+** soil water retention
+SMTAB    =  -1.000,   0.4455416609720303,    ! vol. soil moisture content
+             2.000,   0.2784260436969679,    ! as function of pF [log (cm); cm3 cm-3]
+             4.200,   0.2756076633311875
+SMW      =   0.2756076633311875  !  soil moisture content at wilting point [cm3/cm3]
+SMFCF    =   0.2784260436969679  !  soil moisture content at field capacity [cm3/cm3]
+SM0      =   0.4455416609720303  !  soil moisture content at saturation [cm3/cm3]
+CRAIRC   =   0.06  ! critical soil air content for aeration [cm3/cm3]
+
+** hydraulic conductivity
+K0       =  17.342503765192017  ! hydraulic conductivity of saturated soil [cm day-1]
+SOPE     =   8.671251882596009   ! maximum percolation rate root zone[cm day-1]
+KSUB     =   3.4685007530384038   ! maximum percolation rate subsoil [cm day-1]
+RDMSOL   =   80     ! maximum soil rootable depth [cm]
+
+** soil workability parameters
+SPADS    =   0.1  !  1st topsoil seepage parameter deep seedbed
+SPODS    =   0.03  !  2nd topsoil seepage parameter deep seedbed
+SPASS    =   0.2  !  1st topsoil seepage parameter shallow seedbed
+SPOSS    =   0.05  !  2nd topsoil seepage parameter shallow seedbed
+DEFLIM   =  -0.3  !  required moisture deficit deep seedbed

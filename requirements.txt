@@ -8,3 +8,7 @@ passlib[bcrypt]
 python-jose
 alembic
 bcrypt<4.0
+joblib
+numpy
+scipy
+pandas

@@ -5,6 +5,7 @@
 
 from kivy.app import App
 from kivymd.app import MDApp
+from kivymd.uix.menu import MDDropdownMenu
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.properties import BooleanProperty, StringProperty
@@ -23,6 +24,37 @@ class FocusTextInput(TextInput):
 class SignupPage(Screen):
     is_login_mode = BooleanProperty(False)
     error_message = StringProperty("")
+    selected_subcounty = ""
+
+    def open_subcounty_menu(self):
+        subcounties = [
+            "Mvita",
+            "Kisumu Central",
+            "Kitui West",
+            "Bumula",
+            "Nyakach"
+        ]
+
+        menu_items = [
+            {
+                "text": sc,
+                "viewclass": "OneLineListItem",
+                "on_release": lambda x=sc: self.set_subcounty(x),
+            }
+            for sc in subcounties
+        ]
+
+        self.menu = MDDropdownMenu(
+            caller=self.ids.signup_card.ids.subcounty_field,
+            items=menu_items,
+            width_mult=4,
+        )
+        self.menu.open()
+
+    def set_subcounty(self, subcounty):
+        self.selected_subcounty = subcounty
+        self.ids.signup_card.ids.subcounty_field.text = subcounty
+        self.menu.dismiss()
 
     def process_signup(self):
         self.error_message = ""
@@ -40,12 +72,17 @@ class SignupPage(Screen):
         
         if len(password) > 256:
             self.error_message = "Password too long"
+
+        if not self.selected_subcounty:
+            self.show_error("Please select your subcounty")
+            return
         
         try:
             payload = {
                 "username": username,
                 "password": password,
-                "input_type": input_type
+                "input_type": input_type,
+                "subcounty": self.selected_subcounty
             }
             # FastAPI's default port is 8000
             # response = requests.post("http://127.0.0.1", json=payload, timeout=5)
@@ -110,7 +147,7 @@ class TextInputScreen(Screen):
             response = requests.post(
                 "http://127.0.0.1:8000/message",
                 json={"message": message},
-                timeout=5
+                timeout=30
             )
 
             if response.status_code == 200:

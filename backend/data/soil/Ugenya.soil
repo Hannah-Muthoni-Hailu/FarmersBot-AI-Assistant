@@ -1,0 +1,31 @@
+** $Id: Ugenya_soil.new 1.0 2025/11/20 00:00:00 Generated $
+**
+** SOIL DATA FILE for use with WOFOST Version 5.0
+**
+** Ugenya_soil
+
+SOLNAM='Ugenya_soil'
+
+** physical soil characteristics 
+
+** soil water retention
+SMTAB    =  -1.000,   0.33338498787874526,    ! vol. soil moisture content
+             2.000,   0.21836650381522837,    ! as function of pF [log (cm); cm3 cm-3]
+             4.200,   0.2777568495727188
+SMW      =   0.2777568495727188  !  soil moisture content at wilting point [cm3/cm3]
+SMFCF    =   0.21836650381522837  !  soil moisture content at field capacity [cm3/cm3]
+SM0      =   0.33338498787874526  !  soil moisture content at saturation [cm3/cm3]
+CRAIRC   =   0.06  ! critical soil air content for aeration [cm3/cm3]
+
+** hydraulic conductivity
+K0       =  5.545588034634223  ! hydraulic conductivity of saturated soil [cm day-1]
+SOPE     =   2.7727940173171115   ! maximum percolation rate root zone[cm day-1]
+KSUB     =   1.1091176069268447   ! maximum percolation rate subsoil [cm day-1]
+RDMSOL   =   80     ! maximum soil rootable depth [cm]
+
+** soil workability parameters
+SPADS    =   0.1  !  1st topsoil seepage parameter deep seedbed
+SPODS    =   0.03  !  2nd topsoil seepage parameter deep seedbed
+SPASS    =   0.2  !  1st topsoil seepage parameter shallow seedbed
+SPOSS    =   0.05  !  2nd topsoil seepage parameter shallow seedbed
+DEFLIM   =  -0.3  !  required moisture deficit deep seedbed

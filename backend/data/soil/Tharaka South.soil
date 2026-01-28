@@ -1,0 +1,31 @@
+** $Id: Tharaka South_soil.new 1.0 2025/11/20 00:00:00 Generated $
+**
+** SOIL DATA FILE for use with WOFOST Version 5.0
+**
+** Tharaka South_soil
+
+SOLNAM='Tharaka South_soil'
+
+** physical soil characteristics 
+
+** soil water retention
+SMTAB    =  -1.000,   0.3050196641456927,    ! vol. soil moisture content
+             2.000,   0.1861111425800352,    ! as function of pF [log (cm); cm3 cm-3]
+             4.200,   0.25535540532861245
+SMW      =   0.25535540532861245  !  soil moisture content at wilting point [cm3/cm3]
+SMFCF    =   0.1861111425800352  !  soil moisture content at field capacity [cm3/cm3]
+SM0      =   0.3050196641456927  !  soil moisture content at saturation [cm3/cm3]
+CRAIRC   =   0.06  ! critical soil air content for aeration [cm3/cm3]
+
+** hydraulic conductivity
+K0       =  5.911583215270865  ! hydraulic conductivity of saturated soil [cm day-1]
+SOPE     =   2.9557916076354327   ! maximum percolation rate root zone[cm day-1]
+KSUB     =   1.1823166430541732   ! maximum percolation rate subsoil [cm day-1]
+RDMSOL   =   80     ! maximum soil rootable depth [cm]
+
+** soil workability parameters
+SPADS    =   0.1  !  1st topsoil seepage parameter deep seedbed
+SPODS    =   0.03  !  2nd topsoil seepage parameter deep seedbed
+SPASS    =   0.2  !  1st topsoil seepage parameter shallow seedbed
+SPOSS    =   0.05  !  2nd topsoil seepage parameter shallow seedbed
+DEFLIM   =  -0.3  !  required moisture deficit deep seedbed

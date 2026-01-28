@@ -107,10 +107,30 @@
             CheckBox:
                 id: text_check
                 group: "input"
+
+    Widget:
+        size_hint_y: 0.3
+        
+    MDBoxLayout:
+        id: dropdown_menu
+        orientation: "vertical"
+        size_hint_y: None
+        height: 70 if not root.is_login_mode else 0
+        opacity: 1 if not root.is_login_mode else 0
+        disabled: root.is_login_mode
+        on_touch_down:
+            if self.collide_point(*args[1].pos): root.parent.parent.open_subcounty_menu()
+
+        MDTextField:
+            id: subcounty_field
+            hint_text: "Select subcounty"
+            mode: "rectangle"
+            readonly: True
+
     
     # Spacer (pushes the card down)
     Widget:
-        size_hint_y: 0.5
+        size_hint_y: 0.3
 
     Label:
         text: root.parent.parent.error_message
@@ -288,8 +308,6 @@
             MDList:
                 id: chat_list
 
-        Widget: 
-            size_hint_y: 1
 
         BoxLayout:
             id: input_panel
