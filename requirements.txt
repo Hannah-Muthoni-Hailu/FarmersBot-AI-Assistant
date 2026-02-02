@@ -13,3 +13,5 @@ numpy
 scipy
 pandas
 opencv-python
+huggingface_hub
+vosk

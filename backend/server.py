@@ -20,6 +20,10 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 import json
+
+from huggingface_hub import InferenceClient
+from openai import OpenAI
+
 # uvicorn backend.server:app --reload
 
 SECRET_KEY = "CHANGE_THIS"
@@ -30,6 +34,16 @@ app = FastAPI()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "ai_models", "best_intent_model.joblib")
+
+client = InferenceClient(
+    provider="hf-inference",
+    api_key=os.environ["HF_TOKEN"],
+)
+
+llm_client = OpenAI(
+    base_url="https://router.huggingface.co/v1",
+    api_key=os.environ["HF_TOKEN"],
+)
 
 IMAGE = None
 
@@ -254,10 +268,23 @@ def run_simulation():
     # return yeild
 
 def analyze_image():
-   global intent
-   intent = None
+    global intent
+    global IMAGE
 
-   return "Thankyou for the image"
+    intent = None
+    IMAGE = None
+    issues = []
+
+    diseases = client.image_classification("backend/data/00_jpg.rf.7fa2b9652948e8c39a51a68ec5c6b70a.jpg", model="linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification")[0]['label']
+
+    if diseases.split(' ')[0].lower() != 'healthy':
+       issues.append(diseases)
+    
+    os.remove(IMAGE)
+    if len(issues) > 0:
+       return f"The following issues were identifieentified in your crop: {' '.join(issues)}"
+    else:
+       return "Your crops seem fine"
 
 def handle_intent(text):
     global intent
@@ -285,7 +312,15 @@ def handle_intent(text):
         return reply
     else:
        intent = None
-       reply = "Hello. Welcome"
+       reply = llm_client.chat.completions.create(
+            model="jinaai/ReaderLM-v2:featherless-ai",
+            messages=[
+                {
+                    "role": "user",
+                    "content": text
+                }
+            ],
+        ).choices[0].message.content
     
     return reply
 
