@@ -1,7 +1,4 @@
-# from kivy.config import Config
-
-# # Enable debug outlines
-# Config.set("graphics", "debug", "1")
+import os
 
 from kivy.app import App
 from kivymd.app import MDApp
@@ -9,13 +6,22 @@ from kivymd.uix.menu import MDDropdownMenu
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.properties import BooleanProperty, StringProperty
+from kivy.core.audio import SoundLoader
 import requests
 
 from kivy.uix.textinput import TextInput
 from kivymd.uix.list import OneLineListItem
 
 import time
-import os
+
+import sounddevice as sd
+import numpy as np
+from scipy.io.wavfile import write
+import threading
+
+import pygame
+
+pygame.mixer.init()
 
 class FocusTextInput(TextInput):
     def on_touch_down(self, touch):
@@ -130,7 +136,139 @@ class SignupPage(Screen):
         self.is_login_mode = not self.is_login_mode
 
 class AudioInput(Screen):
-    pass
+    is_recording = BooleanProperty(False)
+    response_audio_path = StringProperty("")
+    _recording_thread = None
+    _recording_stop = threading.Event()
+    _frames = None
+    _samplerate = 16000
+    _channels = 1
+    _response_sound = None
+
+    def build(self):
+        pass
+
+    def _record_worker(self):
+        self._frames = []
+        self._recording_stop.clear()
+
+        def callback(indata, frames, time_info, status):
+            if status:
+                print("Audio stream status:", status)
+            self._frames.append(indata.copy())
+
+        try:
+            with sd.InputStream(
+                samplerate=self._samplerate,
+                channels=self._channels,
+                dtype="int16",
+                callback=callback,
+            ):
+                while not self._recording_stop.is_set():
+                    sd.sleep(100)
+        except Exception as e:
+            print("Failed to start audio stream:", e)
+
+    def _build_audio_path(self):
+        backend_data_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "backend",
+            "data",
+        )
+        os.makedirs(backend_data_path, exist_ok=True)
+        filename = f"recorded_{int(time.time())}.wav"
+        return os.path.join(backend_data_path, filename)
+
+    def _build_response_audio_path(self):
+        frontend_data_path = os.path.join(
+            os.path.dirname(__file__),
+            "data",
+        )
+        os.makedirs(frontend_data_path, exist_ok=True)
+        filename = f"response_{int(time.time())}.wav"
+        return os.path.join(frontend_data_path, filename)
+    
+    def record_audio(self):
+        if not self.is_recording:
+            self.is_recording = True
+            self.ids.record_audio.text = "Stop recording"
+            self._recording_thread = threading.Thread(
+                target=self._record_worker,
+                daemon=True,
+            )
+            self._recording_thread.start()
+            return
+
+        self._recording_stop.set()
+        if self._recording_thread:
+            self._recording_thread.join(timeout=2.0)
+        self.is_recording = False
+        self.ids.record_audio.text = "Record audio"
+
+        if not self._frames:
+            print("No audio captured")
+            return
+
+        audio_data = np.concatenate(self._frames, axis=0)
+        filepath = self._build_audio_path()
+        write(filepath, self._samplerate, audio_data)
+        print("Saved audio to:", filepath)
+
+        try:
+            response = requests.post(
+                "http://127.0.0.1:8000/audio",
+                json={"audio": filepath},
+                timeout=30,
+            )
+
+            if response.status_code == 200:
+                payload = response.json()
+                reply = payload.get("reply", "")
+                audio_url = payload.get("audio_url")
+                print("Server replied:", reply)
+
+                if audio_url:
+                    print("Audio url: ", audio_url)
+                    audio_response = requests.get(
+                        f"http://127.0.0.1:8000{audio_url}",
+                        timeout=30,
+                    )
+                    if audio_response.status_code == 200:
+                        response_path = self._build_response_audio_path()
+                        with open(response_path, "wb") as f:
+                            f.write(audio_response.content)
+                        self.response_audio_path = response_path
+                        self.ids.play_response.disabled = False
+                        self.ids.play_response.text = "Play response"
+
+        except Exception:
+            print("Failed to send message")
+
+    def play_response(self):
+        if not self.response_audio_path or not os.path.isfile(self.response_audio_path):
+            print("No response audio available")
+            return
+        
+        try:
+            pygame.mixer.music.load(self.response_audio_path)
+            pygame.mixer.music.play()
+            # Optional: wait for it to finish so the file isn't locked
+            while pygame.mixer.music.get_busy():
+                pygame.time.Clock().tick(10)
+
+        except Exception as e:
+            print(f"Playback error: {e}")
+        finally:
+            if self.response_audio_path and os.path.isfile(self.response_audio_path):
+                try:
+                    os.remove(self.response_audio_path)
+                except Exception as e:
+                    print("Failed to delete response audio:", e)
+
+            self.response_audio_path = ""
+            self.ids.play_response.disabled = True
+            self.ids.play_response.text = "Play response"
 
 class TextInputScreen(Screen):
     cam_screen = None
@@ -210,8 +348,9 @@ BoxLayout:
                 json={"image": filepath},
                 timeout=30
             )
-
+            
             if response.status_code == 200:
+                print("Responded")
                 reply = response.json()["reply"]
                 print("Server replied:", reply)
                 self.show_reply(reply)

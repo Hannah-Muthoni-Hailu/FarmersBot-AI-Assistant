@@ -15,3 +15,5 @@ pandas
 opencv-python
 huggingface_hub
 vosk
+pygame
+gradient_client

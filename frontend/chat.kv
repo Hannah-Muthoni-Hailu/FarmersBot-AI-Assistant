@@ -245,6 +245,10 @@
                     size: self.size
                     pos: self.pos
 
+        RecycleView:
+            MDList:
+                id: chat_list
+
         RelativeLayout:
             Button:
                 id: record_audio
@@ -253,6 +257,7 @@
                 size: (300, 300)
                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                 background_color: 0, 0, 0, 0
+                on_press: root.record_audio()
                 
                 canvas.before:
                     Color:
@@ -260,7 +265,26 @@
                     RoundedRectangle:
                         size: self.size
                         pos: self.pos
-                        radius: [150] 
+                        radius: [150]
+
+        Button:
+            id: play_response
+            text: "Play response"
+            size_hint: (0.3, None)
+            height: 50
+            pos_hint: {'center_x': 0.5}
+            disabled: True
+            background_color: 0,0,0,0
+            background_normal: ''
+            on_press: root.play_response()
+            canvas.before:
+                Color:
+                    rgba: (179/255, 156/255, 77/255, 1)
+                RoundedRectangle:
+                    size: self.size
+                    pos: self.pos
+                    radius: [15]
+
 
         Button:
             id: capture
@@ -278,6 +302,7 @@
                     size: self.size
                     pos: self.pos
                     radius: [15]
+            on_press: root.capture_image()
 
 <TextInputScreen>:
     canvas.before:

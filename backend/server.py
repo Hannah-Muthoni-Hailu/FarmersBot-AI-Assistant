@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uvicorn
 from sqlalchemy.orm import Session
@@ -10,6 +11,7 @@ from backend.database.security import hash_password
 from backend.database.security import verify_password
 from jose import jwt
 from datetime import timedelta, datetime
+import time
 import joblib
 import os
 
@@ -24,6 +26,12 @@ import json
 from huggingface_hub import InferenceClient
 from openai import OpenAI
 
+import numpy as np
+from vosk import Model, KaldiRecognizer
+import wave
+
+import base64
+from gradio_client import Client
 # uvicorn backend.server:app --reload
 
 SECRET_KEY = "CHANGE_THIS"
@@ -35,6 +43,7 @@ app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "ai_models", "best_intent_model.joblib")
 
+# Crop growth analysis models
 client = InferenceClient(
     provider="hf-inference",
     api_key=os.environ["HF_TOKEN"],
@@ -53,7 +62,6 @@ intent = None
 # Simulation data
 crop_data = YAMLCropDataProvider(Wofost71_PP)
 crop_sim_data = {}
-
 subcounty_files = os.path.join(BASE_DIR, "data", "subcounties.json")
 
 with open(subcounty_files, 'r') as file:
@@ -63,6 +71,9 @@ subcounties = subcounty_data["subcounties"]
 subcounty_lats = subcounty_data["latitudes"]
 subcounty_lons = subcounty_data["longitudes"]
 
+# Audio control
+att_model = Model(model_name="vosk-model-small-en-us-0.15")
+tts_client = Client("Muthoni254/kokoro-audio")
 
 def get_db():
     db = SessionLocal()
@@ -87,6 +98,9 @@ class UserMessage(BaseModel):
 
 class UserImage(BaseModel):
     image: str
+
+class UserAudio(BaseModel):
+   audio: str
 
 @app.post("/signup")
 async def signup(data: UserSignup, db: Session = Depends(get_db)):
@@ -151,8 +165,58 @@ def handle_image(data: UserImage):
     IMAGE = data.image
     intent = 'crop_growth_analysis'
     reply = handle_intent('')
+    print("handle audio: ", reply)
 
     return {"reply": reply}
+
+@app.post("/audio")
+def handle_audio(data: UserAudio):
+    audio_path = data.audio
+    audio_filename = f"generated_{int(time.time())}.wav"
+    generated_audio_path = os.path.join(BASE_DIR, "data", audio_filename)
+    os.makedirs(os.path.dirname(generated_audio_path), exist_ok=True)
+
+    try:
+        with wave.open(audio_path, "rb") as audio:
+            rec = KaldiRecognizer(att_model, audio.getframerate())
+            all_frames = audio.readframes(audio.getnframes())
+            rec.AcceptWaveform(all_frames)
+
+        result = json.loads(rec.FinalResult())["text"]
+        reply = handle_intent(result)
+
+        try:
+            base64_string = tts_client.predict(
+                text=reply,
+                voice="af_heart",
+                api_name="/generate_speech_as_bytes"
+            )
+            audio_data = base64.b64decode(base64_string)
+
+            with open(generated_audio_path, "wb") as f:
+                f.write(audio_data)
+                print(generated_audio_path)
+
+        except Exception as e:
+            print(e)
+
+        return {"reply": reply, "audio_url": f"/audio/{audio_filename}"}
+    finally:
+        try:
+            os.remove(audio_path)
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            print("Failed to delete audio file:", e)
+
+@app.get("/audio/{filename}")
+def get_audio(filename: str, background_tasks: BackgroundTasks):
+    audio_path = os.path.join(BASE_DIR, "data", filename)
+
+    if not os.path.isfile(audio_path):
+        raise HTTPException(404, "Audio file not found")
+
+    return FileResponse(audio_path, media_type="audio/wav", filename=filename)
 
 def get_simulation_data(text, crop_sim_data):
   # Get crop
@@ -272,7 +336,6 @@ def analyze_image():
     global IMAGE
 
     intent = None
-    IMAGE = None
     issues = []
 
     diseases = client.image_classification("backend/data/00_jpg.rf.7fa2b9652948e8c39a51a68ec5c6b70a.jpg", model="linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification")[0]['label']
@@ -280,7 +343,12 @@ def analyze_image():
     if diseases.split(' ')[0].lower() != 'healthy':
        issues.append(diseases)
     
-    os.remove(IMAGE)
+    try:
+        os.remove(IMAGE)
+        IMAGE = None
+    except Exception as e:
+        print("Failed to delete response audio:", e)
+
     if len(issues) > 0:
        return f"The following issues were identifieentified in your crop: {' '.join(issues)}"
     else:
@@ -328,38 +396,9 @@ def handle_intent(text):
 if __name__ == "__main__":
     # Run server on http://127.0.0.1:8000
     uvicorn.run(app, host="127.0.0.1", port=8000)
+    print("Application started at port 8000")
 
-'''
-text_input:
-    - Intent handling:
-        - If intent is crop growth simulation -> send to crop_simulation
-        - If intent is crop growth analysis
-            - request image
-            - pass image through all the models
-            - identify response
-                - for each result from the models
-                    - if no return "No disease/pest/nutrition deficiency identified"
-                    - if anything is detected, use the database to find cure and send it in a statement like
-                    "The model identified the following issues:
-                        - name of pest/disease/nutrition deficiency - prescription"
-        - If intent is general conversation - pass to general conversation model but ensure conversations are limited
-
-audio_input:
-    - pass to audio to text model:
-    - send to intent handling process:
-    - get response and send to text to audio to return to user
-
-Tasks:
-1. Create function that receives text input
-
-2. Perform intent handling (function receives text):
-    - determines the intent
-    - send text to specific model based on intent
-        a. Crop simulation:
-        b. Crop growth analysis
-
-        
---------------------------------------------------
+'''        
 Additions
 1. Allow the page to automatically scroll down once we get to the bottom
 2. Improve intent handling function
