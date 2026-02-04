@@ -31,7 +31,8 @@ from vosk import Model, KaldiRecognizer
 import wave
 
 import base64
-from gradio_client import Client
+from gradio_client import Client, handle_file
+import ast
 # uvicorn backend.server:app --reload
 
 SECRET_KEY = "CHANGE_THIS"
@@ -48,6 +49,7 @@ client = InferenceClient(
     provider="hf-inference",
     api_key=os.environ["HF_TOKEN"],
 )
+pest_client = Client("Muthoni254/pest-detector")
 
 llm_client = OpenAI(
     base_url="https://router.huggingface.co/v1",
@@ -165,7 +167,6 @@ def handle_image(data: UserImage):
     IMAGE = data.image
     intent = 'crop_growth_analysis'
     reply = handle_intent('')
-    print("handle audio: ", reply)
 
     return {"reply": reply}
 
@@ -338,7 +339,19 @@ def analyze_image():
     intent = None
     issues = []
 
-    diseases = client.image_classification("backend/data/00_jpg.rf.7fa2b9652948e8c39a51a68ec5c6b70a.jpg", model="linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification")[0]['label']
+    diseases = client.image_classification(IMAGE, model="linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification")[0]['label']
+
+    try:
+        pests = pest_client.predict(
+            img=handle_file(IMAGE),
+            api_name="/predict_pest"
+        )
+
+        raw_list = ast.literal_eval(pests)
+        pests = list(dict.fromkeys(raw_list))
+        issues.extend(pests)
+    except Exception as e:
+        print(e)
 
     if diseases.split(' ')[0].lower() != 'healthy':
        issues.append(diseases)
@@ -347,7 +360,7 @@ def analyze_image():
         os.remove(IMAGE)
         IMAGE = None
     except Exception as e:
-        print("Failed to delete response audio:", e)
+        print("Failed to delete image:", e)
 
     if len(issues) > 0:
        return f"The following issues were identifieentified in your crop: {' '.join(issues)}"
@@ -392,7 +405,6 @@ def handle_intent(text):
     
     return reply
 
-
 if __name__ == "__main__":
     # Run server on http://127.0.0.1:8000
     uvicorn.run(app, host="127.0.0.1", port=8000)
@@ -403,4 +415,7 @@ Additions
 1. Allow the page to automatically scroll down once we get to the bottom
 2. Improve intent handling function
 3. Add water to the stuff you can simulate
+4. Increase size of login box
+5. Allow page to scroll automatically
+6. Add recommendations for crop analysis
 '''
