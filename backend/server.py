@@ -332,19 +332,24 @@ def run_simulation():
     # run the model
     model = Wofost71_PP(params, weather_data, agromanagement)
     model.run_till_terminate()
-    output = model.get_output()
 
+    summary = model.get_summary_output()[0]
+
+    harvest_date = summary['DOM']
+    yeild = summary['TWSO']
+
+    output = model.get_output()
+    total_transpiration = sum(day['TRA'] for day in output if day['TRA'] is not None)
+    total_evaporation = sum(day['EVS'] for day in output if day['EVS'] is not None)
+
+    total_water_use = total_transpiration + total_evaporation * 100000
+    
     intent = None
     pending_intent = None
     del crop_sim_data['crop_name']
     del crop_sim_data['crop_variety']
 
-    # Return yeild
-    yeild = output[-1]['TWSO']
-    # water = output['TRA'].sum() * 10
-
-    return f"Your expected output is {yeild} kg/ha."
-    # return yeild
+    return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
 
 def analyze_image():
     global intent
@@ -448,7 +453,7 @@ if __name__ == "__main__":
 
 '''        
 Additions
-3. Add water to the stuff you can simulate
+1. Multilingual chatbot
 '''
 
 '''
