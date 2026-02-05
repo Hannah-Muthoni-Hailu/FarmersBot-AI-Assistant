@@ -8,7 +8,7 @@
     toggle_mode: lambda *args: None
     orientation: 'vertical'
     size_hint: (None, None)
-    size: (400, 400)
+    size: (400, 500)
     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
     padding: 10
     canvas.before:
@@ -63,7 +63,6 @@
         size_hint_x: 0.8
         pos_hint: {'center_x': 0.5}
     
-    # Spacer (pushes the card down)
     Widget:
         size_hint_y: 0.3
 
@@ -109,13 +108,15 @@
                 group: "input"
 
     Widget:
-        size_hint_y: 0.3
+        size_hint_y: 0.01
         
     MDBoxLayout:
         id: dropdown_menu
         orientation: "vertical"
+        size_hint_x: 0.8
         size_hint_y: None
         height: 70 if not root.is_login_mode else 0
+        pos_hint: {'center_x': 0.5}
         opacity: 1 if not root.is_login_mode else 0
         disabled: root.is_login_mode
         on_touch_down:

@@ -49,7 +49,11 @@ client = InferenceClient(
     provider="hf-inference",
     api_key=os.environ["HF_TOKEN"],
 )
-pest_client = Client("Muthoni254/pest-detector")
+
+try:
+    pest_client = Client("Muthoni254/pest-detector")
+except Exception as e:
+    print("Pest client: ", e)
 
 llm_client = OpenAI(
     base_url="https://router.huggingface.co/v1",
@@ -58,8 +62,12 @@ llm_client = OpenAI(
 
 IMAGE = None
 
+with open(os.path.join(BASE_DIR, "data", "treatments.json"), 'r') as file:
+    treatments = json.load(file)
+
 intent_model = joblib.load(MODEL_PATH)
 intent = None
+pending_intent = None
 
 # Simulation data
 crop_data = YAMLCropDataProvider(Wofost71_PP)
@@ -75,7 +83,11 @@ subcounty_lons = subcounty_data["longitudes"]
 
 # Audio control
 att_model = Model(model_name="vosk-model-small-en-us-0.15")
-tts_client = Client("Muthoni254/kokoro-audio")
+
+try:
+    tts_client = Client("Muthoni254/kokoro-audio")
+except Exception as e:
+    print("TTS client: ",e)
 
 def get_db():
     db = SessionLocal()
@@ -268,6 +280,7 @@ AgroManagement:
 def run_simulation():
     global intent
     global crop_sim_data
+    global pending_intent
 
     planting_duration = {
         "barley": 6,
@@ -322,6 +335,7 @@ def run_simulation():
     output = model.get_output()
 
     intent = None
+    pending_intent = None
     del crop_sim_data['crop_name']
     del crop_sim_data['crop_variety']
 
@@ -352,9 +366,16 @@ def analyze_image():
         issues.extend(pests)
     except Exception as e:
         print(e)
+        return "There was an error generating response. Please try again later"
 
     if diseases.split(' ')[0].lower() != 'healthy':
        issues.append(diseases)
+
+    # 1. Define the starting phrase
+    base_string = "The following issues were identified in your crop: "
+
+    # 2. Create a list of formatted strings for each key-value pair
+    issue_descriptions = [f"Issue: {issue}, Treatment: {treatments[issue]}" for issue in issues]
     
     try:
         os.remove(IMAGE)
@@ -363,30 +384,45 @@ def analyze_image():
         print("Failed to delete image:", e)
 
     if len(issues) > 0:
-       return f"The following issues were identifieentified in your crop: {' '.join(issues)}"
+       return base_string + ", ".join(issue_descriptions) + "."
     else:
        return "Your crops seem fine"
 
 def handle_intent(text):
     global intent
     global crop_sim_data
+    global pending_intent
 
     if not intent:
         intent = intent_model.predict([text])[0]
 
-    if intent == "crop_simulation":
+    if intent == "crop_simulation" or pending_intent == 'crop simulation': # Pending intent will only be passed here on the second call to crop simulation
         needed = get_simulation_data(text, crop_sim_data)
         
         if len(needed) > 0:
-            reply = f"Please provide the following: {", ".join(needed)}. If you already provided a crop name, then we are sorry but it seems like we do not support that crop"
+            if not pending_intent:
+                reply = f"Please provide the following: {", ".join(needed)}. If you already provided a crop name, then we are sorry but it seems like we do not support that crop"
+                pending_intent = "crop simulation"
+                intent = None
+            else:
+                pending_intent = None
+                intent = None
+                reply = f"Please repeat that"
         else:
             reply = run_simulation()
 
         return reply
 
-    elif intent == "crop_growth_analysis":
+    elif intent == "crop_growth_analysis" or pending_intent == 'crop_growth_analysis':
         if not IMAGE:
-           reply = "Please provide an image"
+            if not pending_intent:
+                reply = "Please provide an image"
+                pending_intent = "crop_growth_analysis"
+                intent = None
+            else:
+                pending_intent = None
+                intent = None
+                reply = f"Please repeat that"
         else:
            reply = analyze_image()
 
@@ -413,9 +449,11 @@ if __name__ == "__main__":
 '''        
 Additions
 1. Allow the page to automatically scroll down once we get to the bottom
-2. Improve intent handling function
 3. Add water to the stuff you can simulate
-4. Increase size of login box
-5. Allow page to scroll automatically
-6. Add recommendations for crop analysis
+'''
+
+'''
+Notes:
+1. Intent handling model needs to be trained on a much larger data size
+2. 
 '''

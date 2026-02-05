@@ -4,9 +4,9 @@ AgroManagement:
     CropCalendar:
         crop_name: maize
         variety_name: Maize_VanHeemst_1988
-        crop_start_date: 2025-02-04
+        crop_start_date: 2025-02-05
         crop_start_type: emergence
-        crop_end_date: 2025-08-04
+        crop_end_date: 2025-08-05
         crop_end_type: harvest
         max_duration: 360
     TimedEvents: null
