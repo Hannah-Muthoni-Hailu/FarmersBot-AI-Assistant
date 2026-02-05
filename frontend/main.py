@@ -11,6 +11,9 @@ import requests
 
 from kivy.uix.textinput import TextInput
 from kivymd.uix.list import OneLineListItem
+from kivymd.uix.label import MDLabel
+from kivy.metrics import dp
+from kivy.clock import Clock
 
 import time
 
@@ -272,13 +275,13 @@ class AudioInput(Screen):
 
 class TextInputScreen(Screen):
     cam_screen = None
+    chat_padding = dp(20)
 
     def send_message(self):
         message = self.ids.message_input.text.strip()
         try:
-            self.ids.chat_list.add_widget(
-                OneLineListItem(text=f"You: {message}")
-            )
+            self.ids.chat_list.add_widget(self._make_chat_label(f"You: {message}"))
+            Clock.schedule_once(self._scroll_chat_to_bottom, 0)
         except Exception as e:
             print("Failed to update chat list:", e)
 
@@ -304,9 +307,8 @@ class TextInputScreen(Screen):
         print(reply)
         self.response = reply
         try:
-            self.ids.chat_list.add_widget(
-                OneLineListItem(text=f"Bot: {reply}")
-            )
+            self.ids.chat_list.add_widget(self._make_chat_label(f"Bot: {reply}"))
+            Clock.schedule_once(self._scroll_chat_to_bottom, 0)
             self.ids.message_input.text = ""
         except Exception as e:
             print("Failed to update chat list:", e)
@@ -357,6 +359,28 @@ BoxLayout:
 
         except Exception:
             print("Failed to send message")
+
+    def _scroll_chat_to_bottom(self, *args):
+        if "chat_scroll" in self.ids:
+            self.ids.chat_scroll.scroll_y = 0
+
+    def _make_chat_label(self, text):
+        label = MDLabel(
+            text=text,
+            halign="left",
+            valign="top",
+            size_hint_y=None,
+        )
+
+        def _update_text_size(*_):
+            width = max(self.ids.chat_list.width - self.chat_padding, dp(100))
+            label.text_size = (width, None)
+            label.texture_update()
+            label.height = label.texture_size[1] + dp(10)
+
+        label.bind(width=_update_text_size)
+        _update_text_size()
+        return label
 
 class ChatApp(MDApp):
     def build(self):

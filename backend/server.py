@@ -448,7 +448,6 @@ if __name__ == "__main__":
 
 '''        
 Additions
-1. Allow the page to automatically scroll down once we get to the bottom
 3. Add water to the stuff you can simulate
 '''
 
