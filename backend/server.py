@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from typing import Optional
 import uvicorn
 from sqlalchemy.orm import Session
 
@@ -116,6 +117,13 @@ class UserImage(BaseModel):
 class UserAudio(BaseModel):
    audio: str
 
+class UserUpdate(BaseModel):
+    current_username: str
+    new_username: Optional[str] = None
+    new_password: Optional[str] = None
+    input_type: Optional[str] = None
+    subcounty: Optional[str] = None
+
 @app.post("/signup")
 async def signup(data: UserSignup, db: Session = Depends(get_db)):
     global crop_sim_data
@@ -140,7 +148,6 @@ async def signup(data: UserSignup, db: Session = Depends(get_db)):
     # This logic only runs if Pydantic validation passes
     print(f"New Signup: {data.username} with preference {data.input_type}")
     
-    # You can add further backend checks here (e.g., if user exists)
     return {"status": "success", "message": "User registered successfully"}
 
 @app.post("/login")
@@ -164,7 +171,7 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
         algorithm=ALGORITHM
     )
 
-    return {"access_token": token, "input_type": user.input_type}
+    return {"access_token": token, "input_type": user.input_type, "subcounty": user.subcounty}
 
 @app.post("/message")
 def handle_message(data: UserMessage):
@@ -225,11 +232,47 @@ def handle_audio(data: UserAudio):
 @app.get("/audio/{filename}")
 def get_audio(filename: str, background_tasks: BackgroundTasks):
     audio_path = os.path.join(BASE_DIR, "data", filename)
+    print("Audio path server: ", audio_path)
 
     if not os.path.isfile(audio_path):
         raise HTTPException(404, "Audio file not found")
 
     return FileResponse(audio_path, media_type="audio/wav", filename=filename)
+
+@app.post("/update_profile")
+def update_profile(data: UserUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == data.current_username).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    if data.new_username and data.new_username != data.current_username:
+        existing = db.query(User).filter(User.username == data.new_username).first()
+        if existing:
+            raise HTTPException(400, "Username already exists")
+        user.username = data.new_username
+
+    if data.new_password:
+        if len(data.new_password) > 256:
+            raise HTTPException(400, "Password too long")
+        user.password_hash = hash_password(data.new_password)
+
+    if data.input_type:
+        if data.input_type not in ["audio", "text"]:
+            raise HTTPException(400, "Invalid input_type")
+        user.input_type = data.input_type
+
+    if data.subcounty:
+        if data.subcounty not in subcounties:
+            raise HTTPException(400, "Invalid subcounty")
+        user.subcounty = data.subcounty
+
+    db.commit()
+
+    return {
+        "username": user.username,
+        "input_type": user.input_type,
+        "subcounty": user.subcounty,
+    }
 
 def get_simulation_data(text, crop_sim_data):
   # Get crop
@@ -371,7 +414,7 @@ def analyze_image():
         issues.extend(pests)
     except Exception as e:
         print(e)
-        return "There was an error generating response. Please try again later"
+        return "There was an error generating pest response. Please try again later"
 
     if diseases.split(' ')[0].lower() != 'healthy':
        issues.append(diseases)

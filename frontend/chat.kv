@@ -10,10 +10,10 @@
     size_hint: (None, None)
     size: (400, 500)
     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-    padding: 10
+    padding: 20
     canvas.before:
         Color:
-            rgba: (96/255), (119/255), (68/255), 1 
+            rgba: (90/255), (150/255), (63/255), 1
         RoundedRectangle:
             size: self.size
             pos: self.pos
@@ -35,13 +35,13 @@
         multiline: False
         focus: True if self.collide_point(*self.parent.to_window(*self.pos)) else False
         size_hint_y: None
-        height: 40
+        height: 30
         size_hint_x: 0.8
         pos_hint: {'center_x': 0.5}
 
-    # Spacer (pushes the card down)
+    # Spacer
     Widget:
-        size_hint_y: 0.01
+        size_hint_y: 0.05
 
     # Password input
     Label:
@@ -59,18 +59,17 @@
         multiline: False
         focus: True if self.collide_point(*self.parent.to_window(*self.pos)) else False
         size_hint_y: None
-        height: 40
+        height: 30
         size_hint_x: 0.8
         pos_hint: {'center_x': 0.5}
     
     Widget:
-        size_hint_y: 0.3
+        size_hint_y: 0.05
 
     BoxLayout:
         id: input_type_container
         orientation: "vertical"
         size_hint_y: None
-        # Use the logic on the parent so the label AND checkboxes hide together
         height: 0 if root.is_login_mode else 70 
         opacity: 0 if root.is_login_mode else 1
         disabled: root.is_login_mode
@@ -90,7 +89,7 @@
             id: input_type_row
             orientation: "horizontal"
             size_hint_y: None
-            height: 40
+            height: 30
             size_hint_x: 0.8
             pos_hint: {'center_x': 0.5}
 
@@ -108,7 +107,7 @@
                 group: "input"
 
     Widget:
-        size_hint_y: 0.01
+        size_hint_y: 0.1
         
     MDBoxLayout:
         id: dropdown_menu
@@ -131,7 +130,7 @@
     
     # Spacer (pushes the card down)
     Widget:
-        size_hint_y: 0.3
+        size_hint_y: 0.05
 
     Label:
         text: root.parent.parent.error_message
@@ -147,7 +146,7 @@
     Button:
         id: send_button
         text: "SEND"
-        size_hint: (0.8, None)
+        size_hint: (0.5, None)
         height: 50
         pos_hint: {'center_x': 0.5}
         background_color: 0,0,0,0
@@ -176,10 +175,6 @@
             else "Don't have an account? Signup here"
         on_release:
             root.toggle_mode()
-
-    # Spacer
-    Widget:
-        size_hint_y: 0.1
 
 <SignupPage>:
     canvas.before:
@@ -233,10 +228,12 @@
         orientation: "vertical"
         size: root.size
         pos: root.pos
+        size_hint_y: None
 
         # Green Horizontal Bar (top)
         BoxLayout:
             id: top_bar
+            orientation: "horizontal"
             size_hint_y: None
             height: 50
             canvas.before:
@@ -246,64 +243,59 @@
                     size: self.size
                     pos: self.pos
 
+            Widget:
+                size_hint_x: 1
+
+            Button:
+                text: "Settings"
+                size_hint_x: None
+                width: 120
+                background_color: 0,0,0,0
+                on_press: app.root.current = "settings"
+
         RecycleView:
             MDList:
                 id: chat_list
 
         RelativeLayout:
-            Button:
+            size_hint: None, None
+            size: 300, 300  # This defines the circular area
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+            # 1. Draw the Circular Background
+            canvas.before:
+                Color:
+                    rgba: (96/255), (119/255), (68/255), 1
+                Ellipse:
+                    # Drawing at 0,0 relative to the parent RelativeLayout
+                    pos: 0, 0
+                    size: self.size
+
+            MDIconButton:
                 id: record_audio
-                text: "Record audio"
-                size_hint: (None, None)
-                size: (300, 300)
+                icon: "microphone"
+                font_size: "100sp"  # Adjust this to change the icon's size ONLY
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                on_release: root.record_audio()
+            
+            Button:
                 background_color: 0, 0, 0, 0
-                on_press: root.record_audio()
-                
-                canvas.before:
-                    Color:
-                        rgba: (96/255), (119/255), (68/255), 1
-                    RoundedRectangle:
-                        size: self.size
-                        pos: self.pos
-                        radius: [150]
+                size_hint: 1, 1
+                on_release: root.record_audio()
 
-        Button:
-            id: play_response
-            text: "Play response"
-            size_hint: (0.3, None)
-            height: 50
-            pos_hint: {'center_x': 0.5}
-            disabled: True
-            background_color: 0,0,0,0
-            background_normal: ''
-            on_press: root.play_response()
-            canvas.before:
-                Color:
-                    rgba: (179/255, 156/255, 77/255, 1)
-                RoundedRectangle:
-                    size: self.size
-                    pos: self.pos
-                    radius: [15]
+        Widget:
+            size_hint_y: 1
 
-
-        Button:
-            id: capture
-            text: "CAPTURE"
-            size_hint: (0.2, None)
-            height: 50
+        MDIconButton:
+            icon: "camera"
+            md_bg_color: (96/255), (119/255), (68/255), 1
+            background_normal: ""
+            size_hint: None, None
+            size: 48, 48
             pos_hint: {'right': 1}
-            background_color: 0,0,0,0
-            background_normal: ''
-            on_press: app.root.current = "textinput"
-            canvas.before:
-                Color:
-                    rgba: (179/255, 156/255, 77/255, 1)
-                RoundedRectangle:
-                    size: self.size
-                    pos: self.pos
-                    radius: [15]
-            on_press: root.capture_image()
+            on_release: root.capture_image()
 
 <TextInputScreen>:
     canvas.before:
@@ -321,6 +313,7 @@
         # Green Horizontal Bar (top)
         BoxLayout:
             id: top_bar
+            orientation: "horizontal"
             size_hint_y: None
             height: 50
             canvas.before:
@@ -329,6 +322,16 @@
                 Rectangle:
                     size: self.size
                     pos: self.pos
+
+            Widget:
+                size_hint_x: 1
+
+            Button:
+                text: "Settings"
+                size_hint_x: None
+                width: 120
+                background_color: 0,0,0,0
+                on_press: app.root.current = "settings"
 
         RecycleView:
             MDList:
@@ -369,17 +372,204 @@
                         radius: [10]
                 on_press: root.send_message()
 
-            Button:
-                id: capture
-                text: "Capture"
-                size_hint_x: 0.2
-                background_color: 0,0,0,0
-                canvas.before:
-                    Color:
-                        rgba: (179/255, 156/255, 77/255, 1)
-                    RoundedRectangle:
-                        size: self.size
-                        pos: self.pos
-                        radius: [10]
+            MDIconButton:
+                icon: "camera"
+                md_bg_color: (96/255), (119/255), (68/255), 1
+                background_normal: ""
+                size_hint: None, None
+                size: 48, 48
+                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                on_release: root.capture_image()
 
-                on_press: root.capture_image()
+<SettingsPage>:
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+    BoxLayout:
+        orientation: "vertical"
+        size: root.size
+        pos: root.pos
+
+        BoxLayout:
+            id: top_bar
+            orientation: "horizontal"
+            size_hint_y: None
+            height: 50
+            canvas.before:
+                Color:
+                    rgba: (96/255), (119/255), (68/255), 1 
+                Rectangle:
+                    size: self.size
+                    pos: self.pos
+
+        Widget:
+            size_hint_y: 0.1
+
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint: (None, None)
+            size: (400, 500)
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+            padding: 20
+            canvas.before:
+                Color:
+                    rgba: (90/255), (150/255), (63/255), 1
+                RoundedRectangle:
+                    size: self.size
+                    pos: self.pos
+                    radius: [20, 20, 20, 20]
+
+            Label:
+                text: "Username:"
+                color: 0, 0, 0, 1
+                size_hint_y: None
+                height: 30
+                text_size: self.size
+                halign: 'left'
+                valign: 'middle'
+                padding_x: 35
+
+            FocusTextInput:
+                id: settings_username
+                multiline: False
+                size_hint_y: None
+                height: 30
+                size_hint_x: 0.8
+                pos_hint: {'center_x': 0.5}
+            
+            # Spacer
+            Widget:
+                size_hint_y: 0.05
+
+            Label:
+                text: "Password (leave blank to keep)"
+                color: 0, 0, 0, 1
+                size_hint_y: None
+                height: 30
+                text_size: self.size
+                halign: 'left'
+                valign: 'middle'
+                padding_x: 35
+
+            FocusTextInput:
+                id: settings_password
+                multiline: False
+                size_hint_y: None
+                height: 30
+                size_hint_x: 0.8
+                pos_hint: {'center_x': 0.5}
+            
+            Widget:
+                size_hint_y: 0.05
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: 70
+                spacing: 5
+
+                Label:
+                    text: "Preferred input type"
+                    color: 0, 0, 0, 1
+                    size_hint_y: None
+                    height: 30
+                    text_size: self.size
+                    halign: "left"
+                    valign: "middle"
+                    padding_x: 35
+
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint_y: None
+                    height: 30
+                    size_hint_x: 0.8
+                    pos_hint: {'center_x': 0.5}
+
+                    Label:
+                        text: "Audio"
+                        color: 0,0,0,1
+                    CheckBox:
+                        id: settings_audio
+                        group: "settings_input"
+                    Label:
+                        text: "Text"
+                        color: 0,0,0,1
+                    CheckBox:
+                        id: settings_text
+                        group: "settings_input"
+
+            Widget:
+                size_hint_y: 0.05
+
+            MDBoxLayout:
+                id: settings_dropdown
+                orientation: "vertical"
+                size_hint_x: 0.8
+                size_hint_y: None
+                height: 70
+                pos_hint: {'center_x': 0.5}
+                on_touch_down:
+                    if self.collide_point(*args[1].pos): root.open_subcounty_menu()
+
+                MDTextField:
+                    id: settings_subcounty
+                    hint_text: "Select subcounty"
+                    mode: "rectangle"
+                    readonly: True
+
+            Widget:
+                size_hint_y: 0.05
+
+            Label:
+                text: root.error_message
+                color: 1, 0, 0, 1
+                size_hint_y: None
+                height: 30
+                text_size: self.size
+                halign: "center"
+                valign: "middle"
+
+            Widget:
+                size_hint_y: 0.05
+
+            BoxLayout:
+                orientation: "horizontal"
+                size_hint_y: None
+                height: 50
+                spacing: 10
+
+                Button:
+                    text: "Back"
+                    size_hint_x: 0.5
+                    background_color: 0,0,0,0
+                    background_normal: ''
+                    on_press: app.root.current = "textinput" if app.current_input_type == "text" else "audioinput"
+                    canvas.before:
+                        Color:
+                            rgba: (150/255, 150/255, 150/255, 1)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [10]
+
+                Button:
+                    text: "Save"
+                    size_hint_x: 0.5
+                    background_color: 0,0,0,0
+                    background_normal: ''
+                    on_press: root.save_settings()
+                    canvas.before:
+                        Color:
+                            rgba: (179/255, 156/255, 77/255, 1)
+                        RoundedRectangle:
+                            size: self.size
+                            pos: self.pos
+                            radius: [10]
+            Widget:
+                size_hint_y: 0.05
+        Widget:
+            size_hint_y: 0.1

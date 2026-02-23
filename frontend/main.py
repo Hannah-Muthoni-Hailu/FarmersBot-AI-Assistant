@@ -14,6 +14,7 @@ from kivymd.uix.list import OneLineListItem
 from kivymd.uix.label import MDLabel
 from kivy.metrics import dp
 from kivy.clock import Clock
+from kivy.storage.jsonstore import JsonStore
 
 import time
 
@@ -105,6 +106,10 @@ class SignupPage(Screen):
             )
 
             if response.status_code == 200:
+                app = App.get_running_app()
+                app.current_username = username
+                app.current_input_type = input_type
+                app.current_subcounty = self.selected_subcounty
                 # 3. Conditional Navigation on success
                 if input_type == "audio":
                     self.manager.current = "audioinput"
@@ -128,6 +133,19 @@ class SignupPage(Screen):
 
         if response.status_code == 200:
             data = response.json()
+            app = App.get_running_app()
+            app.current_username = username
+            app.current_input_type = data.get("input_type")
+            app.current_subcounty = data.get("subcounty")
+            app.auth_token = data.get("access_token")
+            if app.auth_token:
+                app.store.put(
+                    "auth",
+                    token=app.auth_token,
+                    username=app.current_username,
+                    input_type=app.current_input_type,
+                    subcounty=app.current_subcounty,
+                )
             if data["input_type"] == "audio":
                 self.manager.current = "audioinput"
             else:
@@ -242,8 +260,7 @@ class AudioInput(Screen):
                         with open(response_path, "wb") as f:
                             f.write(audio_response.content)
                         self.response_audio_path = response_path
-                        self.ids.play_response.disabled = False
-                        self.ids.play_response.text = "Play response"
+                        threading.Thread(target=self.play_response, daemon=True).start()
 
         except Exception:
             print("Failed to send message")
@@ -270,8 +287,6 @@ class AudioInput(Screen):
                     print("Failed to delete response audio:", e)
 
             self.response_audio_path = ""
-            self.ids.play_response.disabled = True
-            self.ids.play_response.text = "Play response"
 
 class TextInputScreen(Screen):
     cam_screen = None
@@ -382,13 +397,119 @@ BoxLayout:
         _update_text_size()
         return label
 
+class SettingsPage(Screen):
+    error_message = StringProperty("")
+    selected_subcounty = ""
+
+    def on_pre_enter(self, *args):
+        app = App.get_running_app()
+        self.ids.settings_username.text = app.current_username or ""
+        self.ids.settings_password.text = ""
+        self.selected_subcounty = app.current_subcounty or ""
+        self.ids.settings_subcounty.text = self.selected_subcounty or "Select subcounty"
+
+        if app.current_input_type == "audio":
+            self.ids.settings_audio.active = True
+            self.ids.settings_text.active = False
+        else:
+            self.ids.settings_audio.active = False
+            self.ids.settings_text.active = True
+
+    def open_subcounty_menu(self):
+        subcounties = [
+            "Mvita",
+            "Kisumu Central",
+            "Kitui West",
+            "Bumula",
+            "Nyakach"
+        ]
+
+        menu_items = [
+            {
+                "text": sc,
+                "viewclass": "OneLineListItem",
+                "on_release": lambda x=sc: self.set_subcounty(x),
+            }
+            for sc in subcounties
+        ]
+
+        self.menu = MDDropdownMenu(
+            caller=self.ids.settings_subcounty,
+            items=menu_items,
+            width_mult=4,
+        )
+        self.menu.open()
+
+    def set_subcounty(self, subcounty):
+        self.selected_subcounty = subcounty
+        self.ids.settings_subcounty.text = subcounty
+        self.menu.dismiss()
+
+    def save_settings(self):
+        self.error_message = ""
+        app = App.get_running_app()
+        current_username = app.current_username
+        if not current_username:
+            self.error_message = "No user is logged in"
+            return
+
+        new_username = self.ids.settings_username.text.strip()
+        new_password = self.ids.settings_password.text.strip()
+        input_type = "audio" if self.ids.settings_audio.active else "text"
+        subcounty = self.selected_subcounty
+
+        payload = {
+            "current_username": current_username,
+            "new_username": new_username if new_username else None,
+            "new_password": new_password if new_password else None,
+            "input_type": input_type,
+            "subcounty": subcounty if subcounty else None,
+        }
+
+        try:
+            response = requests.post(
+                "http://127.0.0.1:8000/update_profile",
+                json=payload,
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                app.current_username = data.get("username", current_username)
+                app.current_input_type = data.get("input_type", input_type)
+                app.current_subcounty = data.get("subcounty", subcounty)
+                self.manager.current = "audioinput" if app.current_input_type == "audio" else "textinput"
+            else:
+                self.error_message = response.json().get("detail", "Update failed")
+        except Exception:
+            self.error_message = "Cannot connect to server"
+
 class ChatApp(MDApp):
+    current_username = ""
+    current_input_type = ""
+    current_subcounty = ""
+    auth_token = ""
+
     def build(self):
+        self.store = JsonStore("auth.json")
         sm = ScreenManager()
         sm.add_widget(SignupPage(name="signuppage"))
-        sm.add_widget(AudioInput(name="audioinput"))
         sm.add_widget(TextInputScreen(name="textinput"))
+        sm.add_widget(AudioInput(name="audioinput"))
+        sm.add_widget(SettingsPage(name="settings"))
         return sm
+
+    def on_start(self):
+        if self.store.exists("auth"):
+            data = self.store.get("auth")
+            self.auth_token = data.get("token", "")
+            self.current_username = data.get("username", "")
+            self.current_input_type = data.get("input_type", "")
+            self.current_subcounty = data.get("subcounty", "")
+            if self.current_input_type == "audio":
+                self.root.current = "audioinput"
+            elif self.current_input_type == "text":
+                self.root.current = "textinput"
         
 
 if __name__ == "__main__":
