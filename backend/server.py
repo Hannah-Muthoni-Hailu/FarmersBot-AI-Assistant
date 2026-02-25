@@ -117,6 +117,9 @@ class UserImage(BaseModel):
 class UserAudio(BaseModel):
    audio: str
 
+class UserAudioImage(BaseModel):
+   text: str
+
 class UserUpdate(BaseModel):
     current_username: str
     new_username: Optional[str] = None
@@ -189,6 +192,29 @@ def handle_image(data: UserImage):
 
     return {"reply": reply}
 
+@app.post("/image_audio")
+def handle_image_audio(data: UserAudioImage):
+    reply = data.text
+    audio_filename = f"generated_{int(time.time())}.wav"
+    generated_audio_path = os.path.join(BASE_DIR, "data", audio_filename)
+    os.makedirs(os.path.dirname(generated_audio_path), exist_ok=True)
+
+    try:
+        base64_string = tts_client.predict(
+            text=reply,
+            voice="af_heart",
+            api_name="/generate_speech_as_bytes"
+        )
+        audio_data = base64.b64decode(base64_string)
+
+        with open(generated_audio_path, "wb") as f:
+            f.write(audio_data)
+
+    except Exception as e:
+        print(e)
+
+    return {"audio_url": f"/audio/{audio_filename}"}
+
 @app.post("/audio")
 def handle_audio(data: UserAudio):
     audio_path = data.audio
@@ -215,7 +241,6 @@ def handle_audio(data: UserAudio):
 
             with open(generated_audio_path, "wb") as f:
                 f.write(audio_data)
-                print(generated_audio_path)
 
         except Exception as e:
             print(e)
@@ -236,7 +261,8 @@ def get_audio(filename: str, background_tasks: BackgroundTasks):
 
     if not os.path.isfile(audio_path):
         raise HTTPException(404, "Audio file not found")
-
+    
+    background_tasks.add_task(os.remove, audio_path)
     return FileResponse(audio_path, media_type="audio/wav", filename=filename)
 
 @app.post("/update_profile")
@@ -428,6 +454,7 @@ def analyze_image():
     try:
         os.remove(IMAGE)
         IMAGE = None
+        print("Image deleted")
     except Exception as e:
         print("Failed to delete image:", e)
 

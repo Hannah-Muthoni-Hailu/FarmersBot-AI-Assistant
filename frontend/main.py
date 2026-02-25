@@ -12,6 +12,7 @@ import requests
 from kivy.uix.textinput import TextInput
 from kivymd.uix.list import OneLineListItem
 from kivymd.uix.label import MDLabel
+from kivymd.toast import toast
 from kivy.metrics import dp
 from kivy.clock import Clock
 from kivy.storage.jsonstore import JsonStore
@@ -159,12 +160,14 @@ class SignupPage(Screen):
 class AudioInput(Screen):
     is_recording = BooleanProperty(False)
     response_audio_path = StringProperty("")
+    generated_audio = StringProperty("")
     _recording_thread = None
     _recording_stop = threading.Event()
     _frames = None
     _samplerate = 16000
     _channels = 1
     _response_sound = None
+    cam_screen = None
 
     def build(self):
         pass
@@ -214,6 +217,7 @@ class AudioInput(Screen):
         if not self.is_recording:
             self.is_recording = True
             self.ids.record_audio.text = "Stop recording"
+            toast("Recording started")
             self._recording_thread = threading.Thread(
                 target=self._record_worker,
                 daemon=True,
@@ -236,6 +240,14 @@ class AudioInput(Screen):
         write(filepath, self._samplerate, audio_data)
         print("Saved audio to:", filepath)
 
+        self._set_audio_loading(True)
+        threading.Thread(
+            target=self._send_audio_request,
+            args=(filepath,),
+            daemon=True,
+        ).start()
+
+    def _send_audio_request(self, filepath):
         try:
             response = requests.post(
                 "http://127.0.0.1:8000/audio",
@@ -250,7 +262,6 @@ class AudioInput(Screen):
                 print("Server replied:", reply)
 
                 if audio_url:
-                    print("Audio url: ", audio_url)
                     audio_response = requests.get(
                         f"http://127.0.0.1:8000{audio_url}",
                         timeout=30,
@@ -264,8 +275,18 @@ class AudioInput(Screen):
 
         except Exception:
             print("Failed to send message")
+        finally:
+            Clock.schedule_once(lambda *_: self._set_audio_loading(False), 0)
+
+    def _set_audio_loading(self, is_loading):
+        spinner = self.ids.get("audio_spinner")
+        if not spinner:
+            return
+        spinner.active = is_loading
+        spinner.opacity = 1 if is_loading else 0
 
     def play_response(self):
+        print("Playing Audio")
         if not self.response_audio_path or not os.path.isfile(self.response_audio_path):
             print("No response audio available")
             return
@@ -280,6 +301,7 @@ class AudioInput(Screen):
         except Exception as e:
             print(f"Playback error: {e}")
         finally:
+            print(self.response_audio_path)
             if self.response_audio_path and os.path.isfile(self.response_audio_path):
                 try:
                     os.remove(self.response_audio_path)
@@ -287,6 +309,86 @@ class AudioInput(Screen):
                     print("Failed to delete response audio:", e)
 
             self.response_audio_path = ""
+
+    def capture_image(self):
+        self.cam_screen = Builder.load_string('''
+BoxLayout:
+    orientation: 'vertical'
+    Camera:
+        id: cam
+        resolution: (640, 480)
+        play: True
+    MDRaisedButton:
+        text: "Capture"
+        on_release: app.root.get_screen('audioinput').send_image(cam)
+''')
+        self.add_widget(self.cam_screen)
+
+    def send_image(self, cam):
+        backend_data_path = os.path.join(os.path.dirname(__file__), '..', 'backend', 'data')
+        os.makedirs(backend_data_path, exist_ok=True)  # make sure folder exists
+
+        filename = f"captured_{int(time.time())}.png"
+        filepath = os.path.join(backend_data_path, filename)
+
+        cam.export_to_png(filepath)
+        
+        cam.play = False  # stops the live feed
+        cam._camera = None  # release low-level camera reference
+
+        # Remove the camera widget from the screen
+        if self.cam_screen:
+            self.remove_widget(self.cam_screen)
+            self.cam_screen = None
+        self._set_audio_loading(True)
+        threading.Thread(
+            target=self._send_image_audio_request,
+            args=(filepath,),
+            daemon=True,
+        ).start()
+
+    def _send_image_audio_request(self, filepath):
+        try:
+            response = requests.post(
+                "http://127.0.0.1:8000/image",
+                json={"image": filepath},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                reply = response.json().get("reply", "")
+                if not reply:
+                    return
+
+                response = requests.post(
+                    "http://127.0.0.1:8000/image_audio",
+                    json={"text": reply},
+                    timeout=30,
+                )
+
+                if response.status_code == 200:
+                    payload = response.json()
+                    audio_url = payload.get("audio_url")
+
+                    if audio_url:
+                        audio_response = requests.get(
+                            f"http://127.0.0.1:8000{audio_url}",
+                            timeout=30,
+                        )
+                        if audio_response.status_code == 200:
+                            response_path = self._build_response_audio_path()
+                            with open(response_path, "wb") as f:
+                                f.write(audio_response.content)
+                            self.response_audio_path = response_path
+                            threading.Thread(target=self.play_response, daemon=True).start()
+        except Exception:
+            print("Failed to generate audio")
+        finally:
+            Clock.schedule_once(lambda *_: self._set_audio_loading(False), 0)
+        
+
+    def image_response(self):
+        pass
 
 class TextInputScreen(Screen):
     cam_screen = None
@@ -319,7 +421,6 @@ class TextInputScreen(Screen):
             print("Failed to send message")
 
     def show_reply(self, reply):
-        print(reply)
         self.response = reply
         try:
             self.ids.chat_list.add_widget(self._make_chat_label(f"Bot: {reply}"))
