@@ -494,7 +494,7 @@ BoxLayout:
             label.texture_update()
             label.height = label.texture_size[1] + dp(10)
 
-        label.bind(width=_update_text_size)
+        self.ids.chat_list.bind(width=_update_text_size)
         _update_text_size()
         return label
 

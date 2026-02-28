@@ -454,7 +454,6 @@ def analyze_image():
     try:
         os.remove(IMAGE)
         IMAGE = None
-        print("Image deleted")
     except Exception as e:
         print("Failed to delete image:", e)
 
