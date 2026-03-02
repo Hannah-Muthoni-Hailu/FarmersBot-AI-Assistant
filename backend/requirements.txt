@@ -1,0 +1,17 @@
+fastapi
+pytest
+uvicorn
+sqlalchemy
+psycopg2-binary
+passlib[bcrypt]
+python-jose
+alembic
+bcrypt<4.0
+joblib
+numpy
+scipy
+pandas
+opencv-python
+huggingface_hub
+vosk
+gradient_client
