@@ -18,4 +18,3 @@ pcse
 openai
 wave
 gradio_client
-ast
