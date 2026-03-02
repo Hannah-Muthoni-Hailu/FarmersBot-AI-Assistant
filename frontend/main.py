@@ -367,8 +367,20 @@ BoxLayout:
                 )
 
                 if response.status_code == 200:
-                    self.response_audio_path = response.json()['audio_path']
-                    threading.Thread(target=self.play_response, daemon=True).start()
+                    payload = response.json()
+                    audio_url = payload.get("audio_url")
+
+                    if audio_url:
+                        audio_response = requests.get(
+                            f"http://127.0.0.1:8000{audio_url}",
+                            timeout=30,
+                        )
+                        if audio_response.status_code == 200:
+                            response_path = self._build_response_audio_path()
+                            with open(response_path, "wb") as f:
+                                f.write(audio_response.content)
+                            self.response_audio_path = response_path
+                            threading.Thread(target=self.play_response, daemon=True).start()
         except Exception:
             print("Failed to generate audio")
         finally:
