@@ -17,3 +17,4 @@ vosk
 pcse
 openai
 gradio_client
+scikit-learn
