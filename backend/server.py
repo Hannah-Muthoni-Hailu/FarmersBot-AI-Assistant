@@ -212,7 +212,7 @@ def handle_image_audio(data: UserAudioImage):
     except Exception as e:
         print(e)
 
-    return {"audio_path": generated_audio_path}
+    return {"audio_url": f"/audio/{audio_filename}"}
 
 @app.post("/audio")
 def handle_audio(data: UserAudio):
@@ -244,7 +244,7 @@ def handle_audio(data: UserAudio):
         except Exception as e:
             print(e)
 
-        return {"reply": reply, "audio_url": generated_audio_path}
+        return {"reply": reply, "audio_url": f"/audio/{audio_filename}"}
     finally:
         try:
             os.remove(audio_path)
