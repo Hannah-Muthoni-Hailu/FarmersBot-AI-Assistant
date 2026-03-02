@@ -212,7 +212,7 @@ def handle_image_audio(data: UserAudioImage):
     except Exception as e:
         print(e)
 
-    return {"audio_url": f"/audio/{audio_filename}"}
+    return {"audio_path": generated_audio_path}
 
 @app.post("/audio")
 def handle_audio(data: UserAudio):
