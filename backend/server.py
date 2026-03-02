@@ -34,7 +34,6 @@ import wave
 import base64
 from gradio_client import Client, handle_file
 import ast
-# uvicorn backend.server:app --reload
 
 SECRET_KEY = "CHANGE_THIS"
 ALGORITHM = "HS256"
@@ -516,17 +515,6 @@ def handle_intent(text):
     return reply
 
 if __name__ == "__main__":
-    # Run server on http://127.0.0.1:8000
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
     print("Application started at port 8000")
-
-'''        
-Additions
-1. Multilingual chatbot
-'''
-
-'''
-Notes:
-1. Intent handling model needs to be trained on a much larger data size
-2. 
-'''
