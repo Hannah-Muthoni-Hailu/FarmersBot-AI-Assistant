@@ -14,5 +14,8 @@ pandas
 opencv-python
 huggingface_hub
 vosk
-gradient
 pcse
+openai
+wave
+gradio_client
+ast
