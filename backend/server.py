@@ -244,7 +244,7 @@ def handle_audio(data: UserAudio):
         except Exception as e:
             print(e)
 
-        return {"reply": reply, "audio_url": f"/audio/{audio_filename}"}
+        return {"reply": reply, "audio_url": generated_audio_path}
     finally:
         try:
             os.remove(audio_path)
