@@ -3,6 +3,8 @@ import os
 from kivy.app import App
 from kivymd.app import MDApp
 from kivymd.uix.menu import MDDropdownMenu
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.widget import Widget
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.properties import BooleanProperty, StringProperty
@@ -12,6 +14,7 @@ import requests
 from kivy.uix.textinput import TextInput
 from kivymd.uix.list import OneLineListItem
 from kivymd.uix.label import MDLabel
+from kivymd.uix.card import MDCard
 from kivymd.toast import toast
 from kivy.metrics import dp
 from kivy.clock import Clock
@@ -98,10 +101,8 @@ class SignupPage(Screen):
                 "input_type": input_type,
                 "subcounty": self.selected_subcounty
             }
-            # FastAPI's default port is 8000
-            # response = requests.post("http://127.0.0.1", json=payload, timeout=5)
             response = requests.post(
-                "http://127.0.0.1:8000/signup",
+                "https://random-qh2n.onrender.com/signup",
                 json=payload,
                 timeout=5
             )
@@ -128,7 +129,7 @@ class SignupPage(Screen):
         password = card.ids.password_input.text
 
         response = requests.post(
-            "http://127.0.0.1:8000/login",
+            "https://random-qh2n.onrender.com/login",
             json={"username": username, "password": password}
         )
 
@@ -250,7 +251,7 @@ class AudioInput(Screen):
     def _send_audio_request(self, filepath):
         try:
             response = requests.post(
-                "http://127.0.0.1:8000/audio",
+                "https://random-qh2n.onrender.com/audio",
                 json={"audio": filepath},
                 timeout=30,
             )
@@ -263,7 +264,7 @@ class AudioInput(Screen):
 
                 if audio_url:
                     audio_response = requests.get(
-                        f"http://127.0.0.1:8000{audio_url}",
+                        f"https://random-qh2n.onrender.com{audio_url}",
                         timeout=30,
                     )
                     if audio_response.status_code == 200:
@@ -350,7 +351,7 @@ BoxLayout:
     def _send_image_audio_request(self, filepath):
         try:
             response = requests.post(
-                "http://127.0.0.1:8000/image",
+                "https://random-qh2n.onrender.com/image",
                 json={"image": filepath},
                 timeout=30
             )
@@ -361,7 +362,7 @@ BoxLayout:
                     return
 
                 response = requests.post(
-                    "http://127.0.0.1:8000/image_audio",
+                    "https://random-qh2n.onrender.com/image_audio",
                     json={"text": reply},
                     timeout=30,
                 )
@@ -372,7 +373,7 @@ BoxLayout:
 
                     if audio_url:
                         audio_response = requests.get(
-                            f"http://127.0.0.1:8000{audio_url}",
+                            f"https://random-qh2n.onrender.com{audio_url}",
                             timeout=30,
                         )
                         if audio_response.status_code == 200:
@@ -397,7 +398,7 @@ class TextInputScreen(Screen):
     def send_message(self):
         message = self.ids.message_input.text.strip()
         try:
-            self.ids.chat_list.add_widget(self._make_chat_label(f"You: {message}"))
+            self.ids.chat_list.add_widget(self._make_chat_bubble(f"You: {message}", is_user=True))
             Clock.schedule_once(self._scroll_chat_to_bottom, 0)
         except Exception as e:
             print("Failed to update chat list:", e)
@@ -407,7 +408,7 @@ class TextInputScreen(Screen):
 
         try:
             response = requests.post(
-                "http://127.0.0.1:8000/message",
+                "https://random-qh2n.onrender.com/message",
                 json={"message": message},
                 timeout=30
             )
@@ -423,7 +424,7 @@ class TextInputScreen(Screen):
     def show_reply(self, reply):
         self.response = reply
         try:
-            self.ids.chat_list.add_widget(self._make_chat_label(f"Bot: {reply}"))
+            self.ids.chat_list.add_widget(self._make_chat_bubble(f"Bot: {reply}", is_user=False))
             Clock.schedule_once(self._scroll_chat_to_bottom, 0)
             self.ids.message_input.text = ""
         except Exception as e:
@@ -462,7 +463,7 @@ BoxLayout:
 
         try:
             response = requests.post(
-                "http://127.0.0.1:8000/image",
+                "https://random-qh2n.onrender.com/image",
                 json={"image": filepath},
                 timeout=30
             )
@@ -480,23 +481,49 @@ BoxLayout:
         if "chat_scroll" in self.ids:
             self.ids.chat_scroll.scroll_y = 0
 
-    def _make_chat_label(self, text):
+    def _make_chat_bubble(self, text, is_user=False):
+        row = BoxLayout(
+            size_hint_y=None,
+            size_hint_x=1,
+        )
+
+        bubble = MDCard(
+            orientation="vertical",
+            size_hint_y=None,
+            size_hint_x=None,
+            padding=(dp(12), dp(8)),
+            radius=[dp(12), dp(12), dp(12), dp(12)],
+            md_bg_color=(0.62, 0.62, 0.61, 1) if is_user else (0.46, 0.53, 0.28, 1),
+        )
+
         label = MDLabel(
             text=text,
             halign="left",
             valign="top",
             size_hint_y=None,
         )
+        bubble.add_widget(label)
 
         def _update_text_size(*_):
-            width = max(self.ids.chat_list.width - self.chat_padding, dp(100))
-            label.text_size = (width, None)
+            max_width = max(self.ids.chat_list.width * 0.8, dp(150))
+            label.text_size = (max_width - dp(24), None)
             label.texture_update()
-            label.height = label.texture_size[1] + dp(10)
+            label.height = label.texture_size[1]
+            bubble.width = max_width
+            bubble.height = label.height + dp(16)
 
         self.ids.chat_list.bind(width=_update_text_size)
         _update_text_size()
-        return label
+
+        if is_user:
+            row.add_widget(Widget())
+            row.add_widget(bubble)
+        else:
+            row.add_widget(bubble)
+            row.add_widget(Widget())
+
+        row.height = bubble.height
+        return row
 
 class SettingsPage(Screen):
     error_message = StringProperty("")
@@ -569,7 +596,7 @@ class SettingsPage(Screen):
 
         try:
             response = requests.post(
-                "http://127.0.0.1:8000/update_profile",
+                "https://random-qh2n.onrender.com/update_profile",
                 json=payload,
                 timeout=10
             )
