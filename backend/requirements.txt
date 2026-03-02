@@ -14,4 +14,4 @@ pandas
 opencv-python
 huggingface_hub
 vosk
-gradient_client
+gradient
