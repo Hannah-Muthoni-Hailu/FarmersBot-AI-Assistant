@@ -16,5 +16,4 @@ huggingface_hub
 vosk
 pcse
 openai
-wave
 gradio_client
