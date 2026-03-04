@@ -129,7 +129,7 @@ def signup(data: UserSignup):
         crop_sim_data['longitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
         
         return {"status": "success", "message": "User registered successfully"}
-    except:
+    except Exception as e:
         raise HTTPException(500, f"Signup failed: {str(e)}")
 
 @app.post("/login")
@@ -158,9 +158,9 @@ def login(data: UserLogin):
             algorithm=ALGORITHM
         )
     
-        return {"access_token": token, "input_type": user['input_type'], "subcounty": user['subcounty']}
-    except:
-        raise HTTPException(500, f"Signup failed: {str(e)}")
+        return {"access_token": token, "input_type": 'audio', "subcounty": 'Butere'}
+    except Exception as e:
+        raise HTTPException(500, f"Login failed: {str(e)}")
 
 @app.post("/message")
 def handle_message(data: UserMessage):
