@@ -28,7 +28,7 @@ import base64
 from gradio_client import Client, handle_file
 import ast
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
 SECRET_KEY = "CHANGE_THIS"
@@ -72,7 +72,7 @@ subcounty_lons = subcounty_data["longitudes"]
 
 # Database setup
 uri = os.environ.get("DATABASE_URL")
-client = AsyncIOMotorClient(uri, server_api=ServerApi('1'))
+client = MongoClient(uri, server_api=ServerApi('1'))
 db = client.users
 users_collection = db.AppUsers
 
@@ -107,11 +107,11 @@ class UserUpdate(BaseModel):
     subcounty: Optional[str] = None
 
 @app.post("/signup")
-async def signup(data: UserSignup):
+def signup(data: UserSignup):
     global crop_sim_data
 
     try:
-        existing = await users_collection.find_one({"username": data.username})
+        existing = users_collection.find_one({"username": data.username})
         if existing:
             raise HTTPException(400, "Username already exists")
     
@@ -122,7 +122,7 @@ async def signup(data: UserSignup):
             "subcounty": data.subcounty
         }
     
-        await users_collection.insert_one(user_doc)
+        users_collection.insert_one(user_doc)
     
         crop_sim_data['location'] = data.subcounty
         crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
@@ -133,11 +133,11 @@ async def signup(data: UserSignup):
         raise HTTPException(500, f"Signup failed: {str(e)}")
 
 @app.post("/login")
-async def login(data: UserLogin):
+def login(data: UserLogin):
     global crop_sim_data
 
     try:
-        user = await users_collection.find_one({"username": data.username})
+        user = users_collection.find_one({"username": data.username})
         
         if not user or not verify_password(data.password, user["password_hash"]):
             raise HTTPException(401, "Invalid credentials")
@@ -255,13 +255,13 @@ def get_audio(filename: str, background_tasks: BackgroundTasks):
     return FileResponse(audio_path, media_type="audio/wav", filename=filename)
 
 @app.post("/update_profile")
-async def update_profile(data: UserUpdate):
-    user = await users_collection.find_one({"username": data.username})
+def update_profile(data: UserUpdate):
+    user = users_collection.find_one({"username": data.username})
     if not user:
         raise HTTPException(404, "User not found")
 
     if data.new_username and data.new_username != data.current_username:
-        existing = await users_collection.find_one({"username": data.username})
+        existing = users_collection.find_one({"username": data.username})
         if existing:
             raise HTTPException(400, "Username already exists")
         user['username'] = data.new_username
@@ -281,7 +281,7 @@ async def update_profile(data: UserUpdate):
             raise HTTPException(400, "Invalid subcounty")
         user['subcounty'] = data.subcounty
 
-    await users_collection.update_one(
+    users_collection.update_one(
         {"username": data.current_username},
         {"$set": {
             "username": data.new_username or data.current_username,
