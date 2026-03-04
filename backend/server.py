@@ -16,9 +16,6 @@ import time
 import joblib
 import os
 
-from pcse.base import ParameterProvider
-from pcse.models import Wofost71_PP
-from pcse.input import YAMLAgroManagementReader, YAMLCropDataProvider, NASAPowerWeatherDataProvider, WOFOST72SiteDataProvider, CABOFileReader
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
@@ -44,33 +41,26 @@ app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "ai_models", "best_intent_model.joblib")
 
-# Crop growth analysis models
-client = InferenceClient(
-    provider="hf-inference",
-    api_key=os.environ["HF_TOKEN"],
-)
-
-try:
-    pest_client = Client("Muthoni254/pest-detector")
-except Exception as e:
-    print("Pest client: ", e)
-
-llm_client = OpenAI(
-    base_url="https://router.huggingface.co/v1",
-    api_key=os.environ["HF_TOKEN"],
-)
-
-IMAGE = None
-
+# Load treatments for prescription generation
 with open(os.path.join(BASE_DIR, "data", "treatments.json"), 'r') as file:
     treatments = json.load(file)
 
-intent_model = joblib.load(MODEL_PATH)
+# Set global image variable
+IMAGE = None
+
+# Model holders
+client = None
+pest_client = None
+llm_client = None
+intent_model = None
+crop_data = None
+tts_client = None
+
+# Set global intent variables to allow for persistent intents
 intent = None
 pending_intent = None
 
 # Simulation data
-crop_data = YAMLCropDataProvider(Wofost71_PP)
 crop_sim_data = {}
 subcounty_files = os.path.join(BASE_DIR, "data", "subcounties.json")
 
@@ -80,14 +70,6 @@ with open(subcounty_files, 'r') as file:
 subcounties = subcounty_data["subcounties"]
 subcounty_lats = subcounty_data["latitudes"]
 subcounty_lons = subcounty_data["longitudes"]
-
-# Audio control
-att_model = Model(model_name="vosk-model-small-en-us-0.15")
-
-try:
-    tts_client = Client("Muthoni254/kokoro-audio")
-except Exception as e:
-    print("TTS client: ",e)
 
 def get_db():
     db = SessionLocal()
@@ -200,6 +182,8 @@ def handle_image(data: UserImage):
 
 @app.post("/image_audio")
 def handle_image_audio(data: UserAudioImage):
+    load_audio_models() # Load necessary models
+    
     reply = data.text
     audio_filename = f"generated_{int(time.time())}.wav"
     generated_audio_path = os.path.join(BASE_DIR, "data", audio_filename)
@@ -223,6 +207,7 @@ def handle_image_audio(data: UserAudioImage):
 
 @app.post("/audio")
 def handle_audio(data: UserAudio):
+    load_audio_models() # Load necessary models
     audio_path = data.audio
     audio_filename = f"generated_{int(time.time())}.wav"
     generated_audio_path = os.path.join(BASE_DIR, "data", audio_filename)
@@ -306,6 +291,66 @@ def update_profile(data: UserUpdate, db: Session = Depends(get_db)):
         "subcounty": user.subcounty,
     }
 
+# Lazy loading of models to speed up start-up
+def load_analysis_models():
+    global pest_client
+    global client
+    
+    if not pest_client:
+        try:
+            pest_client = Client("Muthoni254/pest-detector")
+        except Exception as e:
+            print("Pest client: ", e)
+    if not client:
+        try:
+            client = InferenceClient(
+                provider="hf-inference",
+                api_key=os.environ["HF_TOKEN"],
+            )
+        except Exception as e:
+            print("Disease client: ", e)
+
+def load_intent_models():
+    global llm_client
+    global intent_model
+    
+    if not llm_client:
+        try:
+            llm_client = OpenAI(
+                base_url="https://router.huggingface.co/v1",
+                api_key=os.environ["HF_TOKEN"],
+            )
+        except Exception as e:
+            print("LLM client: ", e)
+
+    if not intent_model:
+        intent_model = joblib.load(MODEL_PATH)
+
+def load_sim_models():
+    global crop_data
+    
+    if not crop_data:
+        from pcse.base import ParameterProvider
+        from pcse.models import Wofost71_PP
+        from pcse.input import YAMLAgroManagementReader, YAMLCropDataProvider, NASAPowerWeatherDataProvider, WOFOST72SiteDataProvider, CABOFileReader
+        
+        crop_data = YAMLCropDataProvider(Wofost71_PP)
+
+def load_audio_models():
+    global tts_client
+    global att_model
+
+    if not tts_client:
+        try:
+            tts_client = Client("Muthoni254/kokoro-audio")
+        except Exception as e:
+            print("TTS client: ",e)
+
+    if not att_model:
+        att_model = Model(model_name="vosk-model-small-en-us-0.15")
+
+
+
 def get_simulation_data(text, crop_sim_data):
   # Get crop
   needed = []
@@ -356,6 +401,8 @@ def run_simulation():
     global intent
     global crop_sim_data
     global pending_intent
+
+    load_sim_models()
 
     planting_duration = {
         "barley": 6,
@@ -430,6 +477,9 @@ def analyze_image():
     global intent
     global IMAGE
 
+    # Load models if not yet loaded
+    load_analysis_models()
+
     intent = None
     issues = []
 
@@ -472,6 +522,8 @@ def handle_intent(text):
     global intent
     global crop_sim_data
     global pending_intent
+
+    load_intent_models() # load models needed for handle intent if not yet loaded
 
     if not intent:
         intent = intent_model.predict([text])[0]
