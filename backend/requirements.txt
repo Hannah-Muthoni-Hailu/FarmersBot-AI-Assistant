@@ -19,3 +19,4 @@ pymongo[srv]==3.12
 openai
 gradio_client
 scikit-learn
+motor
