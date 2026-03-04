@@ -3,13 +3,9 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 import uvicorn
-from sqlalchemy.orm import Session
 
-from backend.database.database import SessionLocal
-from backend.database.models import User
-from backend.database.security import hash_password
+from backend.database.security import hash_password, verify_password
 
-from backend.database.security import verify_password
 from jose import jwt
 from datetime import timedelta, datetime
 import time
@@ -31,6 +27,9 @@ import wave
 import base64
 from gradio_client import Client, handle_file
 import ast
+
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.server_api import ServerApi
 
 SECRET_KEY = "CHANGE_THIS"
 ALGORITHM = "HS256"
@@ -71,12 +70,11 @@ subcounties = subcounty_data["subcounties"]
 subcounty_lats = subcounty_data["latitudes"]
 subcounty_lons = subcounty_data["longitudes"]
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Database setup
+uri = os.environ.get("DATABASE_URL")
+client = AsyncIOMotorClient(uri, server_api=ServerApi('1'))
+db = client.users
+users_collection = db.AppUsers
 
 # Data validation model
 class UserSignup(BaseModel):
@@ -109,60 +107,60 @@ class UserUpdate(BaseModel):
     subcounty: Optional[str] = None
 
 @app.post("/signup")
-async def signup(data: UserSignup, db: Session = Depends(get_db)):
+async def signup(data: UserSignup):
     global crop_sim_data
 
-    if db.query(User).filter(User.username == data.username).first():
-        raise HTTPException(400, "Username already exists")
-
-    user = User(
-        username=data.username,
-        password_hash=hash_password(data.password),
-        input_type=data.input_type,
-        subcounty=data.subcounty
-    )
-
-    db.add(user)
-    db.commit()
-
-    crop_sim_data['location'] = data.subcounty
-    crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
-    crop_sim_data['longitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
-
-    # This logic only runs if Pydantic validation passes
-    print(f"New Signup: {data.username} with preference {data.input_type}")
+    try:
+        existing = await users_collection.find_one({"username": data.username})
+        if existing:
+            raise HTTPException(400, "Username already exists")
     
-    return {"status": "success", "message": "User registered successfully"}
+        user_doc = {
+            "username": data.username,
+            "password_hash": hash_password(data.password),
+            "input_type": data.input_type,
+            "subcounty": data.subcounty
+        }
+    
+        await users_collection.insert_one(user_doc)
+    
+        crop_sim_data['location'] = data.subcounty
+        crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
+        crop_sim_data['longitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
+        
+        return {"status": "success", "message": "User registered successfully"}
+    except:
+        raise HTTPException(500, f"Signup failed: {str(e)}")
 
 @app.post("/login")
-def login(data: UserLogin, db: Session = Depends(get_db)):
-    try:
-        global crop_sim_data
-        user = db.query(User).filter(User.username == data.username).first()
-    
-        if not user or not verify_password(data.password, user.password_hash):
-            raise HTTPException(401, "Invalid credentials")
+async def login(data: UserLogin):
+    global crop_sim_data
 
-        if user.subcounty not in subcounties:
+    try:
+        user = await users_collection.find_one({"username": data.username})
+        
+        if not user or not verify_password(data.password, user["password_hash"]):
+            raise HTTPException(401, "Invalid credentials")
+    
+        if user['subcounty'] not in subcounties:
             raise HTTPException(status_code=400, detail="Invalid stored subcounty")
         
-        crop_sim_data['location'] = user.subcounty
+        crop_sim_data['location'] = user['subcounty']
         crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
         crop_sim_data['longitude'] = subcounty_lons[subcounties.index(crop_sim_data['location'])]
     
         token = jwt.encode(
             {
-                "sub": user.username,
+                "sub": user['username'],
                 "exp": datetime.utcnow() + timedelta(days=7)
             },
             SECRET_KEY,
             algorithm=ALGORITHM
         )
     
-        return {"access_token": token, "input_type": user.input_type, "subcounty": user.subcounty}
+        return {"access_token": token, "input_type": user['input_type'], "subcounty": user['subcounty']}
     except:
-        traceback.print_exc()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, f"Signup failed: {str(e)}")
 
 @app.post("/message")
 def handle_message(data: UserMessage):
@@ -257,38 +255,46 @@ def get_audio(filename: str, background_tasks: BackgroundTasks):
     return FileResponse(audio_path, media_type="audio/wav", filename=filename)
 
 @app.post("/update_profile")
-def update_profile(data: UserUpdate, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == data.current_username).first()
+async def update_profile(data: UserUpdate):
+    user = await users_collection.find_one({"username": data.username})
     if not user:
         raise HTTPException(404, "User not found")
 
     if data.new_username and data.new_username != data.current_username:
-        existing = db.query(User).filter(User.username == data.new_username).first()
+        existing = await users_collection.find_one({"username": data.username})
         if existing:
             raise HTTPException(400, "Username already exists")
-        user.username = data.new_username
+        user['username'] = data.new_username
 
     if data.new_password:
         if len(data.new_password) > 256:
             raise HTTPException(400, "Password too long")
-        user.password_hash = hash_password(data.new_password)
+        user['password_hash'] = hash_password(data.new_password)
 
     if data.input_type:
         if data.input_type not in ["audio", "text"]:
             raise HTTPException(400, "Invalid input_type")
-        user.input_type = data.input_type
+        user['input_type'] = data.input_type
 
     if data.subcounty:
         if data.subcounty not in subcounties:
             raise HTTPException(400, "Invalid subcounty")
-        user.subcounty = data.subcounty
+        user['subcounty'] = data.subcounty
 
-    db.commit()
+    await users_collection.update_one(
+        {"username": data.current_username},
+        {"$set": {
+            "username": data.new_username or data.current_username,
+            "password_hash": hash_password(data.new_password) if data.new_password else user["password_hash"],
+            "input_type": data.input_type or user["input_type"],
+            "subcounty": data.subcounty or user["subcounty"]
+        }}
+    )
 
     return {
-        "username": user.username,
-        "input_type": user.input_type,
-        "subcounty": user.subcounty,
+        "username": user['username'],
+        "input_type": user['input_type'],
+        "subcounty": user['subcounty'],
     }
 
 # Lazy loading of models to speed up start-up
