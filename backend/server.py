@@ -154,26 +154,33 @@ async def signup(data: UserSignup, db: Session = Depends(get_db)):
 
 @app.post("/login")
 def login(data: UserLogin, db: Session = Depends(get_db)):
-    global crop_sim_data
-    user = db.query(User).filter(User.username == data.username).first()
-
-    if not user or not verify_password(data.password, user.password_hash):
-        raise HTTPException(401, "Invalid credentials")
+    try:
+        global crop_sim_data
+        user = db.query(User).filter(User.username == data.username).first()
     
-    crop_sim_data['location'] = user.subcounty
-    crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
-    crop_sim_data['longitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
+        if not user or not verify_password(data.password, user.password_hash):
+            raise HTTPException(401, "Invalid credentials")
 
-    token = jwt.encode(
-        {
-            "sub": user.username,
-            "exp": datetime.utcnow() + timedelta(days=7)
-        },
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
-
-    return {"access_token": token, "input_type": user.input_type, "subcounty": user.subcounty}
+        if user.subcounty not in subcounties:
+            raise HTTPException(status_code=400, detail="Invalid stored subcounty")
+        
+        crop_sim_data['location'] = user.subcounty
+        crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
+        crop_sim_data['longitude'] = subcounty_lons[subcounties.index(crop_sim_data['location'])]
+    
+        token = jwt.encode(
+            {
+                "sub": user.username,
+                "exp": datetime.utcnow() + timedelta(days=7)
+            },
+            SECRET_KEY,
+            algorithm=ALGORITHM
+        )
+    
+        return {"access_token": token, "input_type": user.input_type, "subcounty": user.subcounty}
+    except:
+        traceback.print_exc()
+        raise HTTPException(500, str(e))
 
 @app.post("/message")
 def handle_message(data: UserMessage):
