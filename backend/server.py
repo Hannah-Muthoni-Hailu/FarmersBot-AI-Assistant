@@ -171,17 +171,17 @@ def handle_message(data: UserMessage):
         raise HTTPException(500, str(e))
 
 @app.post("/image")
-def handle_image(data: UserImage):
+def handle_image():
     global IMAGE
     global intent
 
-    if 'imageFile' not in data.image:
-        raise HTTPException(f"No file part: {str(data.image)}")
+    if 'imageFile' not in request.files:
+        raise HTTPException(500, f"No file part")
 
-    file = data.image['imageFile']
+    file = request.files['imageFile']
 
     if file.filename == '':
-        raise HTTPException(f"No selected file: {str(file.filename)}")
+        raise HTTPException(500, f"No selected file")
 
     save_path = os.path.join('uploads', file.filename)
     file.save(save_path)
