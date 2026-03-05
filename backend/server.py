@@ -377,19 +377,19 @@ def get_simulation_data(text, crop_sim_data):
     crop_variety = ""
     
     if 'crop_name' not in crop_sim_data.keys():
-    for crop in possible_crops:
-      if crop in text:
-        crop_name = crop
-        crop_variety = list(crop_data.get_crops_varieties()[crop_name])[0]
+        for crop in possible_crops:
+          if crop in text:
+            crop_name = crop
+            crop_variety = list(crop_data.get_crops_varieties()[crop_name])[0]
     else:
-    crop_name = crop_sim_data['crop_name']
-    crop_variety = crop_sim_data['crop_variety']
+        crop_name = crop_sim_data['crop_name']
+        crop_variety = crop_sim_data['crop_variety']
     
     if crop_name == "":
-    needed.append('Crop name')
+        needed.append('Crop name')
     else:
-    crop_sim_data['crop_name'] = crop_name
-    crop_sim_data['crop_variety'] = crop_variety
+        crop_sim_data['crop_name'] = crop_name
+        crop_sim_data['crop_variety'] = crop_variety
     
     return needed
 
