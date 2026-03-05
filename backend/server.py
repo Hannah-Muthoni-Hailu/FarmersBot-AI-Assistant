@@ -531,6 +531,7 @@ def handle_intent(text):
     global intent
     global crop_sim_data
     global pending_intent
+    reply = "Sorry, something went wrong. Please try again." # Default reply incase something crashes
     try:
         load_intent_models() # load models needed for handle intent if not yet loaded
     except Exception as e:
