@@ -464,7 +464,13 @@ def run_simulation():
         soil_data = CABOFileReader(soil_file)
     
         # Weather data
-        weather_data = NASAPowerWeatherDataProvider(crop_sim_data['latitude'], crop_sim_data['longitude'], user="farmersbot")
+        class MyNASAPowerProvider(NASAPowerWeatherDataProvider):
+            def __init__(self, lat, lon, user="farmersbot"):
+                super().__init__(lat, lon)
+                self.user = user
+        
+        # Use it like this:
+        weather_data = MyNASAPowerProvider(crop_sim_data['latitude'], crop_sim_data['longitude'])
     
         sitedata = WOFOST72SiteDataProvider(WAV=100)
     
