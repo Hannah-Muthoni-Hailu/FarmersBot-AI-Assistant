@@ -509,23 +509,6 @@ def run_simulation():
         soil_file = os.path.join(BASE_DIR, "data", "soil", f"{crop_sim_data['location']}.soil")
         soil_data = CABOFileReader(soil_file)
     
-        # Weather data
-        # from pcse.fileinput import WeatherDataProvider
-
-        # class MyWeatherProvider(WeatherDataProvider):
-        #     def __init__(self, weather_list):
-        #         self.weather_data = weather_list
-        #         self.current_day = 0
-        #         self.n_days = len(weather_list)
-                
-        #     def get_weather_for_day(self, day_index):
-        #         return self.weather_data[day_index]
-        
-        #     def __iter__(self):
-        #         for w in self.weather_data:
-        #             yield w
-        
-        # weather_provider = MyWeatherProvider(get_weather_data(crop_sim_data['latitude'], crop_sim_data['longitude']))
         weather_provider = OpenMeteoWeatherDataProvider(crop_sim_data['latitude'], crop_sim_data['longitude'])
     
         sitedata = WOFOST72SiteDataProvider(WAV=100)
@@ -542,7 +525,7 @@ def run_simulation():
     
         output = model.get_output()
         total_transpiration = sum(day['TRA'] for day in output if day['TRA'] is not None)
-        total_evaporation = sum(day['EVS'] for day in output if day['EVS'] is not None)
+        total_evaporation = 100# sum(day['EVS'] for day in output if day['EVS'] is not None)
     
         total_water_use = total_transpiration + total_evaporation * 100000
         
