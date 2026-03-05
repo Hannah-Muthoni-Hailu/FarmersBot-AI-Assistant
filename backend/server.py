@@ -73,8 +73,8 @@ subcounty_lons = subcounty_data["longitudes"]
 # Database setup
 uri = os.environ.get("DATABASE_URI")
 client = MongoClient(uri, server_api=ServerApi('1'))
-# db = client.users
-# users_collection = db.AppUsers
+db = client.farmersbot
+users_collection = db.users
 
 # Data validation model
 class UserSignup(BaseModel):
@@ -136,31 +136,29 @@ def signup(data: UserSignup):
 def login(data: UserLogin):
     global crop_sim_data
 
-    try:
-        client.admin.command('ping')
+    try:        
+        user = users_collection.find_one({"username": data.username})
+        
+        if not user or not verify_password(data.password, user["password_hash"]):
+            raise HTTPException(401, "Invalid credentials")
+    
+        if user['subcounty'] not in subcounties:
+            raise HTTPException(status_code=400, detail="Invalid stored subcounty")
+        
+        crop_sim_data['location'] = user['subcounty']
+        crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
+        crop_sim_data['longitude'] = subcounty_lons[subcounties.index(crop_sim_data['location'])]
+    
+        token = jwt.encode(
+            {
+                "sub": user['username'],
+                "exp": datetime.utcnow() + timedelta(days=7)
+            },
+            SECRET_KEY,
+            algorithm=ALGORITHM
+        )
+    
         return {"access_token": token, "input_type": 'audio', "subcounty": 'Butere'}
-        # user = users_collection.find_one({"username": data.username})
-        
-        # if not user or not verify_password(data.password, user["password_hash"]):
-        #     raise HTTPException(401, "Invalid credentials")
-    
-        # if user['subcounty'] not in subcounties:
-        #     raise HTTPException(status_code=400, detail="Invalid stored subcounty")
-        
-        # crop_sim_data['location'] = user['subcounty']
-        # crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
-        # crop_sim_data['longitude'] = subcounty_lons[subcounties.index(crop_sim_data['location'])]
-    
-        # token = jwt.encode(
-        #     {
-        #         "sub": user['username'],
-        #         "exp": datetime.utcnow() + timedelta(days=7)
-        #     },
-        #     SECRET_KEY,
-        #     algorithm=ALGORITHM
-        # )
-    
-        # return {"access_token": token, "input_type": 'audio', "subcounty": 'Butere'}
     except Exception as e:
         raise HTTPException(500, f"Login failed: {str(e)}")
 
