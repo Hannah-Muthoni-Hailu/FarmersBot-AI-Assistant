@@ -534,7 +534,7 @@ def run_simulation():
         del crop_sim_data['crop_name']
         del crop_sim_data['crop_variety']
     
-        return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
+        return str(summary)# f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
 
     except Exception as e:
         raise HTTPException(500, str(e))
