@@ -175,11 +175,24 @@ def handle_image(data: UserImage):
     global IMAGE
     global intent
 
-    IMAGE = data.image
-    intent = 'crop_growth_analysis'
-    reply = handle_intent('')
+    if 'imageFile' not in data.image:
+        raise HTTPException(f"No file part: {str(data.image)}")
 
-    return {"reply": reply}
+    file = data.image['imageFile']
+
+    if file.filename == '':
+        raise HTTPException(f"No selected file: {str(file.filename)}")
+
+    save_path = os.path.join('uploads', file.filename)
+    file.save(save_path)
+
+    return {"message": "Success", "path": save_path}
+    
+    # IMAGE = data.image
+    # intent = 'crop_growth_analysis'
+    # reply = handle_intent('')
+
+    # return {"reply": reply}
 
 @app.post("/image_audio")
 def handle_image_audio(data: UserAudioImage):
