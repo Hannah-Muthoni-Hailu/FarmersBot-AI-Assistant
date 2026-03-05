@@ -467,7 +467,7 @@ def run_simulation():
 
     from pcse.base import ParameterProvider
     from pcse.models import Wofost71_PP
-    from pcse.input import YAMLAgroManagementReader, YAMLCropDataProvider, NASAPowerWeatherDataProvider, WOFOST72SiteDataProvider, CABOFileReader
+    from pcse.input import YAMLAgroManagementReader, OpenMeteoWeatherDataProvider, YAMLCropDataProvider, NASAPowerWeatherDataProvider, WOFOST72SiteDataProvider, CABOFileReader
 
     planting_duration = {
         "barley": 6,
@@ -510,22 +510,23 @@ def run_simulation():
         soil_data = CABOFileReader(soil_file)
     
         # Weather data
-        from pcse.fileinput import WeatherDataProvider
+        # from pcse.fileinput import WeatherDataProvider
 
-        class MyWeatherProvider(WeatherDataProvider):
-            def __init__(self, weather_list):
-                self.weather_data = weather_list
-                self.current_day = 0
-                self.n_days = len(weather_list)
+        # class MyWeatherProvider(WeatherDataProvider):
+        #     def __init__(self, weather_list):
+        #         self.weather_data = weather_list
+        #         self.current_day = 0
+        #         self.n_days = len(weather_list)
                 
-            def get_weather_for_day(self, day_index):
-                return self.weather_data[day_index]
+        #     def get_weather_for_day(self, day_index):
+        #         return self.weather_data[day_index]
         
-            def __iter__(self):
-                for w in self.weather_data:
-                    yield w
+        #     def __iter__(self):
+        #         for w in self.weather_data:
+        #             yield w
         
-        weather_provider = MyWeatherProvider(get_weather_data(crop_sim_data['latitude'], crop_sim_data['longitude']))
+        # weather_provider = MyWeatherProvider(get_weather_data(crop_sim_data['latitude'], crop_sim_data['longitude']))
+        weather_provider = OpenMeteoWeatherDataProvider(crop_sim_data['latitude'], crop_sim_data['longitude'])
     
         sitedata = WOFOST72SiteDataProvider(WAV=100)
     
