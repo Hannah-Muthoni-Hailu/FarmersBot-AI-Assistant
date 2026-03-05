@@ -414,6 +414,52 @@ AgroManagement:
 
   return filename
 
+def get_weather_data(latitude, longitude):
+    import requests
+    from datetime import date
+    
+    start_date = "20000101"  # YYYYMMDD
+    end_date = date.today().strftime("%Y%m%d")
+    
+    # Use a valid username (not 'anonymous')
+    username = "farmersbot"
+    
+    url = (
+        "https://power.larc.nasa.gov/api/temporal/daily/point"
+        f"?request=execute"
+        f"&parameters=TOA_SW_DWN,ALLSKY_SFC_SW_DWN,T2M,T2M_MIN,T2M_MAX,T2MDEW,WS2M,PRECTOTCORR"
+        f"&latitude={latitude}&longitude={longitude}"
+        f"&start={start_date}&end={end_date}"
+        f"&community=AG&format=JSON"
+        f"&user={username}"
+    )
+    
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception(f"NASA POWER API failed with code {response.status_code}: {response.text}")
+    data = response.json()
+
+    weather_list = []
+
+    daily_data = data['properties']['parameter']
+    dates = daily_data['T2M'].keys()  # The keys are dates like "20000101"
+    
+    for d in dates:
+        weather_list.append({
+            'YEAR': int(d[:4]),
+            'DOY': int(date(int(d[:4]), int(d[4:6]), int(d[6:])).timetuple().tm_yday),
+            'T2M': daily_data['T2M'][d],
+            'T2M_MIN': daily_data['T2M_MIN'][d],
+            'T2M_MAX': daily_data['T2M_MAX'][d],
+            'T2MDEW': daily_data['T2MDEW'][d],
+            'WS2M': daily_data['WS2M'][d],
+            'PRECTOTCORR': daily_data['PRECTOTCORR'][d],
+            'ALLSKY_SFC_SW_DWN': daily_data['ALLSKY_SFC_SW_DWN'][d],
+            'TOA_SW_DWN': daily_data['TOA_SW_DWN'][d]
+        })
+        
+    return weather_list
+
 def run_simulation():
     global intent
     global crop_sim_data
@@ -464,20 +510,29 @@ def run_simulation():
         soil_data = CABOFileReader(soil_file)
     
         # Weather data
-        class MyNASAPowerProvider(NASAPowerWeatherDataProvider):
-            def __init__(self, lat, lon, user="farmersbot"):
-                super().__init__(lat, lon)
-                self.user = user
+        from pcse.fileinput import WeatherDataProvider
+
+        class MyWeatherProvider(WeatherDataProvider):
+            def __init__(self, weather_list):
+                self.weather_data = weather_list
+                self.current_day = 0
+                self.n_days = len(weather_list)
+                
+            def get_weather_for_day(self, day_index):
+                return self.weather_data[day_index]
         
-        # Use it like this:
-        weather_data = MyNASAPowerProvider(crop_sim_data['latitude'], crop_sim_data['longitude'])
+            def __iter__(self):
+                for w in self.weather_data:
+                    yield w
+        
+        weather_provider = MyWeatherProvider(get_weather_data(crop_sim_data['latitude'], crop_sim_data['longitude']))
     
         sitedata = WOFOST72SiteDataProvider(WAV=100)
     
         params = ParameterProvider(cropdata=crop_data, soildata=soil_data, sitedata=sitedata)
     
         # run the model
-        model = Wofost71_PP(params, weather_data, agromanagement)
+        model = Wofost71_PP(params, weather_provider, agromanagement)
         model.run_till_terminate()
         summary = model.get_summary_output()[0]
 
