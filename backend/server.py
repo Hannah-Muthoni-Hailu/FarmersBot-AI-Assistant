@@ -202,7 +202,7 @@ def handle_image_audio(data: UserAudioImage):
             f.write(audio_data)
 
     except Exception as e:
-        print(e)
+        raise HTTPException(500, str(e))
 
     return {"audio_url": f"/audio/{audio_filename}"}
 
@@ -235,7 +235,7 @@ def handle_audio(data: UserAudio):
                 f.write(audio_data)
 
         except Exception as e:
-            print(e)
+            raise HTTPException(500, str(e))
 
         return {"reply": reply, "audio_url": f"/audio/{audio_filename}"}
     finally:
@@ -244,7 +244,7 @@ def handle_audio(data: UserAudio):
         except FileNotFoundError:
             pass
         except Exception as e:
-            print("Failed to delete audio file:", e)
+            raise HTTPException(500, str(e))
 
 @app.get("/audio/{filename}")
 def get_audio(filename: str, background_tasks: BackgroundTasks):
@@ -309,7 +309,7 @@ def load_analysis_models():
         try:
             pest_client = Client("Muthoni254/pest-detector")
         except Exception as e:
-            print("Pest client: ", e)
+            raise HTTPException(500, str(e))
     if not client:
         try:
             client = InferenceClient(
@@ -317,7 +317,7 @@ def load_analysis_models():
                 api_key=os.environ["HF_TOKEN"],
             )
         except Exception as e:
-            print("Disease client: ", e)
+            raise HTTPException(500, str(e))
 
 def load_intent_models():
     global llm_client
@@ -330,7 +330,7 @@ def load_intent_models():
                 api_key=os.environ["HF_TOKEN"],
             )
         except Exception as e:
-            print("LLM client: ", e)
+            raise HTTPException(500, str(e))
 
     if not intent_model:
         intent_model = joblib.load(MODEL_PATH)
@@ -353,37 +353,45 @@ def load_audio_models():
         try:
             tts_client = Client("Muthoni254/kokoro-audio")
         except Exception as e:
-            print("TTS client: ",e)
+            raise HTTPException(500, str(e))
 
     if not att_model:
-        att_model = Model(model_name="vosk-model-small-en-us-0.15")
+        try:
+            att_model = Model(model_name="vosk-model-small-en-us-0.15")
+        except Exception as e:
+            raise HTTPException(500, str(e))
 
 
 
 def get_simulation_data(text, crop_sim_data):
-  # Get crop
-  needed = []
-  possible_crops = list(crop_data.get_crops_varieties().keys())
+    try:
+        load_sim_models() # load the simulation model and set crop
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
-  crop_name = ""
-  crop_variety = ""
-
-  if 'crop_name' not in crop_sim_data.keys():
+    # Get crop
+    needed = []
+    possible_crops = list(crop_data.get_crops_varieties().keys())
+    
+    crop_name = ""
+    crop_variety = ""
+    
+    if 'crop_name' not in crop_sim_data.keys():
     for crop in possible_crops:
       if crop in text:
         crop_name = crop
         crop_variety = list(crop_data.get_crops_varieties()[crop_name])[0]
-  else:
+    else:
     crop_name = crop_sim_data['crop_name']
     crop_variety = crop_sim_data['crop_variety']
-
-  if crop_name == "":
+    
+    if crop_name == "":
     needed.append('Crop name')
-  else:
+    else:
     crop_sim_data['crop_name'] = crop_name
     crop_sim_data['crop_variety'] = crop_variety
-
-  return needed
+    
+    return needed
 
 def define_agromanagement(crop_name, crop_variety, start_date, end_date, filename):
   content = f"""Version: 1.0
@@ -411,8 +419,6 @@ def run_simulation():
     global crop_sim_data
     global pending_intent
 
-    load_sim_models()
-
     planting_duration = {
         "barley": 6,
         "cassava": 13,
@@ -438,7 +444,7 @@ def run_simulation():
         "wheat": 5,
         "seed_onion": 4,
     }
-    try:
+    try:        
         # Crop data
         crop_data.set_active_crop(crop_sim_data['crop_name'], crop_sim_data['crop_variety'])
     
@@ -463,41 +469,40 @@ def run_simulation():
         # run the model
         model = Wofost71_PP(params, weather_data, agromanagement)
         model.run_till_terminate()
-    except Exception as e:
-        print("Simulation inside function failed ", e)
-        
+        summary = model.get_summary_output()[0]
 
-    summary = model.get_summary_output()[0]
-
-    harvest_date = summary['DOM']
-    yeild = summary['TWSO']
-
-    output = model.get_output()
-    total_transpiration = sum(day['TRA'] for day in output if day['TRA'] is not None)
-    total_evaporation = sum(day['EVS'] for day in output if day['EVS'] is not None)
-
-    total_water_use = total_transpiration + total_evaporation * 100000
+        harvest_date = summary['DOM']
+        yeild = summary['TWSO']
     
-    intent = None
-    pending_intent = None
-    del crop_sim_data['crop_name']
-    del crop_sim_data['crop_variety']
+        output = model.get_output()
+        total_transpiration = sum(day['TRA'] for day in output if day['TRA'] is not None)
+        total_evaporation = sum(day['EVS'] for day in output if day['EVS'] is not None)
+    
+        total_water_use = total_transpiration + total_evaporation * 100000
+        
+        intent = None
+        pending_intent = None
+        del crop_sim_data['crop_name']
+        del crop_sim_data['crop_variety']
+    
+        return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
 
-    return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
-
+    except Exception as e:
+        raise HTTPException(500, str(e))
+        
 def analyze_image():
     global intent
     global IMAGE
 
-    # Load models if not yet loaded
-    load_analysis_models()
-
-    intent = None
-    issues = []
-
-    diseases = client.image_classification(IMAGE, model="linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification")[0]['label']
-
     try:
+        # Load models if not yet loaded
+        load_analysis_models()
+        
+        intent = None
+        issues = []
+    
+        diseases = client.image_classification(IMAGE, model="linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification")[0]['label']
+    
         pests = pest_client.predict(
             img=handle_file(IMAGE),
             api_name="/predict_pest"
@@ -507,8 +512,7 @@ def analyze_image():
         pests = list(dict.fromkeys(raw_list))
         issues.extend(pests)
     except Exception as e:
-        print(e)
-        return "There was an error generating pest response. Please try again later"
+        raise HTTPException(500, str(e))
 
     if diseases.split(' ')[0].lower() != 'healthy':
        issues.append(diseases)
@@ -538,13 +542,13 @@ def handle_intent(text):
     try:
         load_intent_models() # load models needed for handle intent if not yet loaded
     except Exception as e:
-        print("Loading intent model failed: ", e)
+        raise HTTPException(500, str(e))
 
     if not intent:
         try:
             intent = intent_model.predict([text])[0]
         except Exception as e:
-            print("Intent handling failed: ", e)
+            raise HTTPException(500, str(e))
 
     if intent == "crop_simulation" or pending_intent == 'crop simulation': # Pending intent will only be passed here on the second call to crop simulation
         needed = get_simulation_data(text, crop_sim_data)
@@ -562,7 +566,7 @@ def handle_intent(text):
             try:
                 reply = run_simulation()
             except Exception as e:
-                print("Run Simulation failed: ", e)
+                raise HTTPException(500, str(e))
 
         return reply
 
@@ -593,7 +597,7 @@ def handle_intent(text):
                 ],
             ).choices[0].message.content
         except Exception as e:
-            print("Text generation model failed: ", e)
+            raise HTTPException(500, str(e))
     
     return reply
 
