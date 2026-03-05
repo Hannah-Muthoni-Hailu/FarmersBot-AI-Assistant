@@ -435,31 +435,34 @@ def run_simulation():
         "wheat": 5,
         "seed_onion": 4,
     }
-
-    # Crop data
-    crop_data.set_active_crop(crop_sim_data['crop_name'], crop_sim_data['crop_variety'])
-
-    # Agromanagement data
-    # Start date is assumed to be a year before the current day. End date is calculated based on typical planting season length for the particular crop
-    file_path = os.path.join(BASE_DIR, "data", "agromanagement.agro")
-    start_date = date.today() - relativedelta(years=1)
-    agromanagement_file = define_agromanagement(crop_sim_data['crop_name'], crop_sim_data['crop_variety'], start_date, start_date + relativedelta(months=planting_duration[crop_sim_data['crop_name']]), file_path)
-    agromanagement = YAMLAgroManagementReader(agromanagement_file)
-
-    # Soil data
-    soil_file = os.path.join(BASE_DIR, "data", "soil", f"{crop_sim_data['location']}.soil")
-    soil_data = CABOFileReader(soil_file)
-
-    # Weather data
-    weather_data = NASAPowerWeatherDataProvider(crop_sim_data['latitude'], crop_sim_data['longitude'])
-
-    sitedata = WOFOST72SiteDataProvider(WAV=100)
-
-    params = ParameterProvider(cropdata=crop_data, soildata=soil_data, sitedata=sitedata)
-
-    # run the model
-    model = Wofost71_PP(params, weather_data, agromanagement)
-    model.run_till_terminate()
+    try:
+        # Crop data
+        crop_data.set_active_crop(crop_sim_data['crop_name'], crop_sim_data['crop_variety'])
+    
+        # Agromanagement data
+        # Start date is assumed to be a year before the current day. End date is calculated based on typical planting season length for the particular crop
+        file_path = os.path.join(BASE_DIR, "data", "agromanagement.agro")
+        start_date = date.today() - relativedelta(years=1)
+        agromanagement_file = define_agromanagement(crop_sim_data['crop_name'], crop_sim_data['crop_variety'], start_date, start_date + relativedelta(months=planting_duration[crop_sim_data['crop_name']]), file_path)
+        agromanagement = YAMLAgroManagementReader(agromanagement_file)
+    
+        # Soil data
+        soil_file = os.path.join(BASE_DIR, "data", "soil", f"{crop_sim_data['location']}.soil")
+        soil_data = CABOFileReader(soil_file)
+    
+        # Weather data
+        weather_data = NASAPowerWeatherDataProvider(crop_sim_data['latitude'], crop_sim_data['longitude'])
+    
+        sitedata = WOFOST72SiteDataProvider(WAV=100)
+    
+        params = ParameterProvider(cropdata=crop_data, soildata=soil_data, sitedata=sitedata)
+    
+        # run the model
+        model = Wofost71_PP(params, weather_data, agromanagement)
+        model.run_till_terminate()
+    except Exception as e:
+        print("Simulation inside function failed ", e)
+        
 
     summary = model.get_summary_output()[0]
 
@@ -528,11 +531,16 @@ def handle_intent(text):
     global intent
     global crop_sim_data
     global pending_intent
-
-    load_intent_models() # load models needed for handle intent if not yet loaded
+    try:
+        load_intent_models() # load models needed for handle intent if not yet loaded
+    except Exception as e:
+        print("Loading intent model failed: ", e)
 
     if not intent:
-        intent = intent_model.predict([text])[0]
+        try:
+            intent = intent_model.predict([text])[0]
+        except Exception as e:
+            print("Intent handling failed: ", e)
 
     if intent == "crop_simulation" or pending_intent == 'crop simulation': # Pending intent will only be passed here on the second call to crop simulation
         needed = get_simulation_data(text, crop_sim_data)
@@ -547,7 +555,10 @@ def handle_intent(text):
                 intent = None
                 reply = f"Please repeat that"
         else:
-            reply = run_simulation()
+            try:
+                reply = run_simulation()
+            except Exception as e:
+                print("Run Simulation failed: ", e)
 
         return reply
 
@@ -566,16 +577,19 @@ def handle_intent(text):
 
         return reply
     else:
-       intent = None
-       reply = llm_client.chat.completions.create(
-            model="jinaai/ReaderLM-v2:featherless-ai",
-            messages=[
-                {
-                    "role": "user",
-                    "content": text
-                }
-            ],
-        ).choices[0].message.content
+        intent = None
+        try:
+            reply = llm_client.chat.completions.create(
+                model="jinaai/ReaderLM-v2:featherless-ai",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": text
+                    }
+                ],
+            ).choices[0].message.content
+        except Exception as e:
+            print("Text generation model failed: ", e)
     
     return reply
 
