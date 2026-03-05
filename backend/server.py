@@ -158,7 +158,7 @@ def login(data: UserLogin):
             algorithm=ALGORITHM
         )
     
-        return {"access_token": token, "input_type": 'audio', "subcounty": 'Butere'}
+        return {"access_token": token, "input_type": user['input_type'], "subcounty": user['subcounty']}
     except Exception as e:
         raise HTTPException(500, f"Login failed: {str(e)}")
 
