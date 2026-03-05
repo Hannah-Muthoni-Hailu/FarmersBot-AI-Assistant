@@ -419,6 +419,10 @@ def run_simulation():
     global crop_sim_data
     global pending_intent
 
+    from pcse.base import ParameterProvider
+    from pcse.models import Wofost71_PP
+    from pcse.input import YAMLAgroManagementReader, YAMLCropDataProvider, NASAPowerWeatherDataProvider, WOFOST72SiteDataProvider, CABOFileReader
+
     planting_duration = {
         "barley": 6,
         "cassava": 13,
