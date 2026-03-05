@@ -164,8 +164,11 @@ def login(data: UserLogin):
 
 @app.post("/message")
 def handle_message(data: UserMessage):
-    reply = handle_intent(data.message.lower())
-    return {"reply": reply}
+    try:
+        reply = handle_intent(data.message.lower())
+        return {"reply": reply}
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 @app.post("/image")
 def handle_image(data: UserImage):
