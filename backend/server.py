@@ -520,12 +520,30 @@ def run_simulation():
         model.run_till_terminate()
         summary = model.get_summary_output()[0]
 
-        harvest_date = summary['DOM']
+        # Convert datetime to human-readable form
+        def ordinal(n):
+            if 11 <= n % 100 <= 13:
+                return f"{n}th"
+            return f"{n}{['th','st','nd','rd','th','th','th','th','th','th'][n % 10]}"
+
+        if DOA:
+            new_date = summary['DOA'] + relativedelta(years=1)
+            harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
+        elif DOM:
+            new_date = summary['DOM'] + relativedelta(years=1)
+            harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
+        elif DOH:
+            new_date = summary['DOH'] + relativedelta(years=1)
+            harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
+        elif DOV:
+            new_date = summary['DOV'] + relativedelta(years=1)
+            harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
+        
         yeild = summary['TWSO']
     
         output = model.get_output()
         total_transpiration = sum(day['TRA'] for day in output if day['TRA'] is not None)
-        total_evaporation = 100# sum(day['EVS'] for day in output if day['EVS'] is not None)
+        total_evaporation = sum(day['CEVST'] for day in output if day['CEVST'] is not None)
     
         total_water_use = total_transpiration + total_evaporation * 100000
         
@@ -534,7 +552,7 @@ def run_simulation():
         del crop_sim_data['crop_name']
         del crop_sim_data['crop_variety']
     
-        return str(summary)# f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
+        return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
 
     except Exception as e:
         raise HTTPException(500, str(e))
