@@ -182,16 +182,15 @@ def handle_image(imageFile: UploadFile = File(...),):
         # Save the file using shutil (FastAPI doesn't have .save())
         with open(save_path, "wb") as buffer:
             shutil.copyfileobj(imageFile.file, buffer)
+
+        IMAGE = save_path
+        intent = 'crop_growth_analysis'
+        reply = handle_intent('')
             
-        return {"message": "Success", "path": save_path,}
+        return {"message": "Success", "reply": reply,}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    # IMAGE = data.image
-    # intent = 'crop_growth_analysis'
-    # reply = handle_intent('')
-
-    # return {"reply": reply}
 
 @app.post("/image_audio")
 def handle_image_audio(data: UserAudioImage):
