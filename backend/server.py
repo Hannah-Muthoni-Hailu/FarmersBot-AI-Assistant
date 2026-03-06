@@ -49,7 +49,7 @@ with open(os.path.join(BASE_DIR, "data", "treatments.json"), 'r') as file:
 IMAGE = None
 
 # Model holders
-client = None
+disease_client = None
 pest_client = None
 llm_client = None
 intent_model = None
@@ -316,16 +316,16 @@ def update_profile(data: UserUpdate):
 # Lazy loading of models to speed up start-up
 def load_analysis_models():
     global pest_client
-    global client
+    global disease_client
     
     if not pest_client:
         try:
             pest_client = Client("Muthoni254/pest-detector")
         except Exception as e:
             raise HTTPException(500, f"Error loading pest model: {str(e)}")
-    if not client:
+    if not disease_client:
         try:
-            client = InferenceClient(
+            disease_client = InferenceClient(
                 provider="hf-inference",
                 api_key=os.environ["HF_TOKEN"],
             )
@@ -584,7 +584,7 @@ def analyze_image():
         intent = None
         issues = []
     
-        diseases = client.image_classification(IMAGE, model="linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification")[0]['label']
+        diseases = disease_client.image_classification(IMAGE, model="linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification")[0]['label']
     
         pests = pest_client.predict(
             img=handle_file(IMAGE),
