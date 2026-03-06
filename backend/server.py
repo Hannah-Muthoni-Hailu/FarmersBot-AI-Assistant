@@ -322,7 +322,7 @@ def load_analysis_models():
         try:
             pest_client = Client("Muthoni254/pest-detector")
         except Exception as e:
-            raise HTTPException(500, str(e))
+            raise HTTPException(500, f"Error loading pest model: {str(e)}")
     if not client:
         try:
             client = InferenceClient(
@@ -330,7 +330,7 @@ def load_analysis_models():
                 api_key=os.environ["HF_TOKEN"],
             )
         except Exception as e:
-            raise HTTPException(500, str(e))
+            raise HTTPException(500, f"Error loading disease model: {str(e)}")
 
 def load_intent_models():
     global llm_client
@@ -343,10 +343,13 @@ def load_intent_models():
                 api_key=os.environ["HF_TOKEN"],
             )
         except Exception as e:
-            raise HTTPException(500, str(e))
+            raise HTTPException(500, f"Error loading llm model: {str(e)}")
 
     if not intent_model:
-        intent_model = joblib.load(MODEL_PATH)
+        try:
+            intent_model = joblib.load(MODEL_PATH)
+        except Exception as e:
+            raise HTTPException(500, f"Error loading intent model: {str(e)}")
 
 def load_sim_models():
     global crop_data
@@ -366,13 +369,13 @@ def load_audio_models():
         try:
             tts_client = Client("Muthoni254/kokoro-audio")
         except Exception as e:
-            raise HTTPException(500, str(e))
+            raise HTTPException(500, f"Error loading tts model: {str(e)}")
 
     if not att_model:
         try:
             att_model = Model(model_name="vosk-model-small-en-us-0.15")
         except Exception as e:
-            raise HTTPException(500, str(e))
+            raise HTTPException(500, f"Error loading att model: {str(e)}")
 
 
 
@@ -380,7 +383,7 @@ def get_simulation_data(text, crop_sim_data):
     try:
         load_sim_models() # load the simulation model and set crop
     except Exception as e:
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, f"Error loading simulation models: {str(e)}")
 
     # Get crop
     needed = []
@@ -568,7 +571,7 @@ def run_simulation():
         return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
 
     except Exception as e:
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, f"Error performing simulation {str(e)}")
         
 def analyze_image():
     global intent
@@ -592,7 +595,7 @@ def analyze_image():
         pests = list(dict.fromkeys(raw_list))
         issues.extend(pests)
     except Exception as e:
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, f"Error analyzing image: {str(e)}")
 
     if diseases.split(' ')[0].lower() != 'healthy':
        issues.append(diseases)
@@ -622,13 +625,13 @@ def handle_intent(text):
     try:
         load_intent_models() # load models needed for handle intent if not yet loaded
     except Exception as e:
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, f"Error loading intent models in handle intent: {str(e)}")
 
     if not intent:
         try:
             intent = intent_model.predict([text])[0]
         except Exception as e:
-            raise HTTPException(500, str(e))
+            raise HTTPException(500, f"Error predicting intent: {str(e)}")
 
     if intent == "crop_simulation" or pending_intent == 'crop simulation': # Pending intent will only be passed here on the second call to crop simulation
         needed = get_simulation_data(text, crop_sim_data)
@@ -661,7 +664,10 @@ def handle_intent(text):
                 intent = None
                 reply = f"Please repeat that"
         else:
-           reply = analyze_image()
+            try:
+               reply = analyze_image()
+            except Exception as e:
+                raise HTTPException(500, f"{str(e)}")
 
         return reply
     else:
@@ -677,7 +683,7 @@ def handle_intent(text):
                 ],
             ).choices[0].message.content
         except Exception as e:
-            raise HTTPException(500, str(e))
+            raise HTTPException(500, f"Error generating llm response: {str(e)}")
     
     return reply
 
