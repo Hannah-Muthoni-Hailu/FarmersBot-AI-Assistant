@@ -171,24 +171,21 @@ def handle_message(data: UserMessage):
         raise HTTPException(500, str(e))
 
 @app.post("/image")
-def handle_image(data: UserImage):
-    global IMAGE
-    global intent
+async def handle_image(imageFile: UploadFile = File(...),):
     try:
-        if 'imageFile' not in data.files:
-            raise HTTPException(500, f"No file part")
-    
-        file = data.files['imageFile']
-    
-        if file.filename == '':
-            raise HTTPException(500, f"No selected file")
-    
-        save_path = os.path.join('uploads', file.filename)
-        file.save(save_path)
-    
-        return {"message": "Success", "path": save_path}
+        # Create uploads folder if it doesn't exist
+        os.makedirs('uploads', exist_ok=True)
+        
+        save_path = os.path.join('uploads', imageFile.filename)
+        
+        # Save the file using shutil (FastAPI doesn't have .save())
+        with open(save_path, "wb") as buffer:
+            shutil.copyfileobj(imageFile.file, buffer)
+            
+        return {"message": "Success", "path": save_path,}
+        
     except Exception as e:
-        raise HTTPException(500, f"{str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     # IMAGE = data.image
     # intent = 'crop_growth_analysis'
     # reply = handle_intent('')
