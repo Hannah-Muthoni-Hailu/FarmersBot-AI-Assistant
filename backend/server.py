@@ -173,21 +173,23 @@ def handle_message(data: UserMessage):
 
 @app.post("/image")
 def handle_image(imageFile: UploadFile = File(...),):
+    global IMAGE
+    global intent
+    
     try:
         # Create uploads folder if it doesn't exist
         os.makedirs('uploads', exist_ok=True)
         
-        save_path = os.path.join('uploads', imageFile.filename)
+        IMAGE = os.path.join('uploads', imageFile.filename)
         
         # Save the file using shutil (FastAPI doesn't have .save())
-        with open(save_path, "wb") as buffer:
+        with open(IMAGE, "wb") as buffer:
             shutil.copyfileobj(imageFile.file, buffer)
 
-        IMAGE = save_path
-        # intent = 'crop_growth_analysis'
-        # reply = handle_intent('')
+        intent = 'crop_growth_analysis'
+        reply = handle_intent('')
             
-        return {"message": "Success", "reply": IMAGE}
+        return {"message": "Success", "reply": reply}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
