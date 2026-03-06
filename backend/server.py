@@ -91,7 +91,7 @@ class UserMessage(BaseModel):
     message: str
 
 class UserImage(BaseModel):
-    image: str
+    files: UploadFile
 
 class UserAudio(BaseModel):
    audio: str
@@ -175,10 +175,10 @@ def handle_image():
     global IMAGE
     global intent
     try:
-        if 'imageFile' not in request.files:
+        if 'imageFile' not in data.files:
             raise HTTPException(500, f"No file part")
     
-        file = request.files['imageFile']
+        file = data.files['imageFile']
     
         if file.filename == '':
             raise HTTPException(500, f"No selected file")
