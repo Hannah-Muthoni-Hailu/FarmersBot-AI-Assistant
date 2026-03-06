@@ -174,20 +174,21 @@ def handle_message(data: UserMessage):
 def handle_image():
     global IMAGE
     global intent
-
-    if 'imageFile' not in request.files:
-        raise HTTPException(500, f"No file part")
-
-    file = request.files['imageFile']
-
-    if file.filename == '':
-        raise HTTPException(500, f"No selected file")
-
-    save_path = os.path.join('uploads', file.filename)
-    file.save(save_path)
-
-    return {"message": "Success", "path": save_path}
+    try:
+        if 'imageFile' not in request.files:
+            raise HTTPException(500, f"No file part")
     
+        file = request.files['imageFile']
+    
+        if file.filename == '':
+            raise HTTPException(500, f"No selected file")
+    
+        save_path = os.path.join('uploads', file.filename)
+        file.save(save_path)
+    
+        return {"message": "Success", "path": save_path}
+    except Exception as e:
+        raise HTTPException(500, f"{str(e)}")
     # IMAGE = data.image
     # intent = 'crop_growth_analysis'
     # reply = handle_intent('')
