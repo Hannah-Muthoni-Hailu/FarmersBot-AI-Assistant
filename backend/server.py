@@ -32,11 +32,14 @@ import ast
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
+from pydub import AudioSegment
+
 SECRET_KEY = "CHANGE_THIS"
 ALGORITHM = "HS256"
 
 app = FastAPI()
 
+AudioSegment.converter = os.path.join(os.getcwd(), "ffmpeg", "ffmpeg")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "ai_models", "best_intent_model.joblib")
@@ -231,22 +234,26 @@ def handle_audio(audio_file: UploadFile = File(...)):
         raise HTTPException(500, f"Error loading audio models: {str(e)}")
 
     os.makedirs('uploads', exist_ok=True)
-    
-    file_location = os.path.join('uploads', audio_file.filename)
-    generated_audio_path = os.path.join(BASE_DIR, "data", f"generated_{int(time.time())}.wav")
-    os.makedirs(os.path.dirname(generated_audio_path), exist_ok=True)
+    temp_input_path = os.path.join('uploads', audio_file.filename)
+    wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
     
     try:
-        with open(file_location, "wb+") as file_object:
+        with open(temp_input_path, "wb+") as file_object:
             shutil.copyfileobj(audio_file.file, file_object)
 
-        with wave.open(file_location, "rb") as audio:
+        # Convert to WAV
+        audio_conv = AudioSegment.from_file(temp_input_path)
+        audio_conv = audio_conv.set_channels(1).set_frame_rate(16000)
+        audio_conv.export(wav_path, format="wav")
+
+        # Convert audio to text
+        with wave.open(wav_path, "rb") as audio:
             rec = KaldiRecognizer(att_model, audio.getframerate())
             all_frames = audio.readframes(audio.getnframes())
             rec.AcceptWaveform(all_frames)
+            result_text = json.loads(rec.FinalResult())["text"]
 
-        result = json.loads(rec.FinalResult())["text"]
-        reply = handle_intent(result)
+        reply = handle_intent(result_text)
 
         base64_string = tts_client.predict(
             text=reply,
@@ -264,14 +271,9 @@ def handle_audio(audio_file: UploadFile = File(...)):
         raise HTTPException(500, str(e))
     finally:
         audio_file.file.close()
-    
-    # finally:
-    #     try:
-    #         os.remove(audio_path)
-    #     except FileNotFoundError:
-    #         pass
-    #     except Exception as e:
-    #         raise HTTPException(500, str(e))
+        for path in [temp_input_path, wav_path]:
+            if os.path.exists(path):
+                os.remove(path)
 
 @app.get("/audio/{filename}")
 def get_audio(filename: str, background_tasks: BackgroundTasks):
