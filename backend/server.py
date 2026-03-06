@@ -171,7 +171,7 @@ def handle_message(data: UserMessage):
         raise HTTPException(500, str(e))
 
 @app.post("/image")
-def handle_image():
+def handle_image(data: UserImage):
     global IMAGE
     global intent
     try:
