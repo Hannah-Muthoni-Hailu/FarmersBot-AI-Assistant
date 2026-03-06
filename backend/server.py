@@ -223,15 +223,15 @@ def handle_image_audio(data: UserAudioImage):
 def handle_audio(audio_file: UploadFile = File(...)):
     if not audio_file.filename.endswith(('.3gp', '.wav', '.mp3')):
         raise HTTPException(status_code=400, detail="Unsupported audio format")
-
+    
     file_location = os.path.join('uploads', audio_file.filename)
-
-     try:
+    
+    try:
         with open(file_location, "wb+") as file_object:
             shutil.copyfileobj(audio_file.file, file_object)
     finally:
         audio_file.file.close()
-
+    
     return {"info": f"File '{audio_file.filename}' saved at '{file_location}'"}
 
     # load_audio_models() # Load necessary models
