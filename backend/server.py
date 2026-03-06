@@ -55,6 +55,7 @@ llm_client = None
 intent_model = None
 crop_data = None
 tts_client = None
+att_model = None
 
 # Set global intent variables to allow for persistent intents
 intent = None
