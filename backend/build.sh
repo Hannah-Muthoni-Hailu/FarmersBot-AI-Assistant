@@ -3,7 +3,7 @@
 set -o errexit
 
 # 1. Install Python dependencies
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 # 2. Download FFmpeg static binary if it's not already there
 if [ ! -d "ffmpeg" ]; then
