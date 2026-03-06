@@ -224,48 +224,46 @@ def handle_audio(audio_file: UploadFile = File(...)):
     if not audio_file.filename.endswith(('.3gp', '.wav', '.mp3')):
         raise HTTPException(status_code=400, detail="Unsupported audio format")
 
+    try:
+        load_audio_models()
+    except Exception as e:
+        raise HTTPException(500, f"Error loading audio models: {str(e)}")
+
     os.makedirs('uploads', exist_ok=True)
     
     file_location = os.path.join('uploads', audio_file.filename)
+    generated_audio_path = os.path.join(BASE_DIR, "data", f"generated_{int(time.time())}.wav")
+    os.makedirs(os.path.dirname(generated_audio_path), exist_ok=True)
     
     try:
         with open(file_location, "wb+") as file_object:
             shutil.copyfileobj(audio_file.file, file_object)
+
+        with wave.open(file_location, "rb") as audio:
+            rec = KaldiRecognizer(att_model, audio.getframerate())
+            all_frames = audio.readframes(audio.getnframes())
+            rec.AcceptWaveform(all_frames)
+
+        result = json.loads(rec.FinalResult())["text"]
+        reply = handle_intent(result)
+
+        base64_string = tts_client.predict(
+            text=reply,
+            voice="af_heart",
+            api_name="/generate_speech_as_bytes"
+        )
+        audio_data = base64.b64decode(base64_string)
+
+        with open(generated_audio_path, "wb") as f:
+            f.write(audio_data)
+
+        return {"reply": reply, "audio_url": f"{generated_audio_path}"}
+
+    except Exception as e:
+        raise HTTPException(500, str(e))
     finally:
         audio_file.file.close()
     
-    return {"info": f"File '{audio_file.filename}' saved at '{file_location}'"}
-
-    # load_audio_models() # Load necessary models
-    # audio_path = data.audio
-    # audio_filename = f"generated_{int(time.time())}.wav"
-    # generated_audio_path = os.path.join(BASE_DIR, "data", audio_filename)
-    # os.makedirs(os.path.dirname(generated_audio_path), exist_ok=True)
-
-    # try:
-    #     with wave.open(audio_path, "rb") as audio:
-    #         rec = KaldiRecognizer(att_model, audio.getframerate())
-    #         all_frames = audio.readframes(audio.getnframes())
-    #         rec.AcceptWaveform(all_frames)
-
-    #     result = json.loads(rec.FinalResult())["text"]
-    #     reply = handle_intent(result)
-
-    #     try:
-    #         base64_string = tts_client.predict(
-    #             text=reply,
-    #             voice="af_heart",
-    #             api_name="/generate_speech_as_bytes"
-    #         )
-    #         audio_data = base64.b64decode(base64_string)
-
-    #         with open(generated_audio_path, "wb") as f:
-    #             f.write(audio_data)
-
-    #     except Exception as e:
-    #         raise HTTPException(500, str(e))
-
-    #     return {"reply": reply, "audio_url": f"/audio/{audio_filename}"}
     # finally:
     #     try:
     #         os.remove(audio_path)
