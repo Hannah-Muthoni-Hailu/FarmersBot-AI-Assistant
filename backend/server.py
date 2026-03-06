@@ -223,6 +223,8 @@ def handle_image_audio(data: UserAudioImage):
 def handle_audio(audio_file: UploadFile = File(...)):
     if not audio_file.filename.endswith(('.3gp', '.wav', '.mp3')):
         raise HTTPException(status_code=400, detail="Unsupported audio format")
+
+    os.makedirs('uploads', exist_ok=True)
     
     file_location = os.path.join('uploads', audio_file.filename)
     
