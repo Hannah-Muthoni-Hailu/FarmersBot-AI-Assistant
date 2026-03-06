@@ -184,10 +184,10 @@ def handle_image(imageFile: UploadFile = File(...),):
             shutil.copyfileobj(imageFile.file, buffer)
 
         IMAGE = save_path
-        intent = 'crop_growth_analysis'
-        reply = handle_intent('')
+        # intent = 'crop_growth_analysis'
+        # reply = handle_intent('')
             
-        return {"message": "Success", "reply": reply,}
+        return {"message": "Success", "reply": IMAGE}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
