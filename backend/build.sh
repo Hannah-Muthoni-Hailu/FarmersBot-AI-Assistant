@@ -2,16 +2,23 @@
 # Exit on error
 set -o errexit
 
-# 1. Install Python dependencies
+# Install Python dependencies
 pip install -r backend/requirements.txt
 
-# 2. Download FFmpeg static binary if it's not already there
+# Download FFmpeg static binary
 if [ ! -d "ffmpeg" ]; then
   echo "Downloading FFmpeg static binary..."
   mkdir -p ffmpeg
-  # Using the reliable static build from johnvansickle.com
-  curl -L https://johnvansickle.com | tar -xJ --strip-components=1 -C ffmpeg
+  
+  # Corrected direct link to the latest stable release
+  curl -L https://johnvansickle.com -o ffmpeg.tar.xz
+  
+  # Extract the saved file
+  tar -xJf ffmpeg.tar.xz --strip-components=1 -C ffmpeg
+  
+  # Cleanup the archive to save space
+  rm ffmpeg.tar.xz
 fi
 
-# 3. Add FFmpeg to the current PATH so the build step can see it
+# Add FFmpeg to the current PATH so the build step can see it
 export PATH=$PATH:$(pwd)/ffmpeg
