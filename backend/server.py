@@ -172,7 +172,7 @@ def handle_message(data: UserMessage):
         raise HTTPException(500, str(e))
 
 @app.post("/image")
-async def handle_image(imageFile: UploadFile = File(...),):
+def handle_image(imageFile: UploadFile = File(...),):
     try:
         # Create uploads folder if it doesn't exist
         os.makedirs('uploads', exist_ok=True)
