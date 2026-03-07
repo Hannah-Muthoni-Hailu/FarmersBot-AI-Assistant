@@ -297,7 +297,7 @@ def get_audio(filename: str, background_tasks: BackgroundTasks):
 
 @app.post("/update_profile")
 def update_profile(data: UserUpdate):
-    user = users_collection.find_one({"username": data.username})
+    user = users_collection.find_one({"username": data.current_username})
     if not user:
         raise HTTPException(404, "User not found")
 
@@ -335,7 +335,7 @@ def update_profile(data: UserUpdate):
     return {
         "username": user['username'],
         "input_type": user['input_type'],
-        "subcounty": user['subcounty'],
+        "subcounty": user['subcounty']
     }
 
 # Lazy loading of models to speed up start-up
