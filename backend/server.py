@@ -29,6 +29,7 @@ import base64
 from gradio_client import Client, handle_file
 import ast
 import ffmpeg
+import subprocess
 
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
@@ -240,11 +241,23 @@ def handle_audio(audio_file: UploadFile = File(...)):
             shutil.copyfileobj(audio_file.file, file_object)
 
          # Convert to WAV
-        os.system(f"ffmpeg -i {temp_input_path} {wav_path}")
+        # os.system(f"ffmpeg -i {temp_input_path} {wav_path}")
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i", temp_input_path,
+                "-ar", "16000",      # sample rate
+                "-ac", "1",          # mono
+                "-f", "wav",
+                wav_path
+            ],
+            check=True
+        )
 
         # Convert audio to text
         with wave.open(wav_path, "rb") as audio:
-            rec = KaldiRecognizer(att_model, audio.getframerate())
+            rec = KaldiRecognizer(att_model, 16000)
             all_frames = audio.readframes(audio.getnframes())
             rec.AcceptWaveform(all_frames)
             result_text = json.loads(rec.FinalResult())["text"]
