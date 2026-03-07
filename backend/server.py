@@ -235,7 +235,7 @@ def handle_audio(audio_file: UploadFile = File(...)):
         os.makedirs('uploads', exist_ok=True)
         temp_input_path = os.path.join('uploads', audio_file.filename)
         wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
-        generated_audio_path = os.path.join("uploads", f"tts_{int(time.time())}.wav")
+        # generated_audio_path = os.path.join("uploads", f"tts_{int(time.time())}.wav")
         
         with open(temp_input_path, "wb+") as file_object:
             shutil.copyfileobj(audio_file.file, file_object)
@@ -271,10 +271,10 @@ def handle_audio(audio_file: UploadFile = File(...)):
         )
         audio_data = base64.b64decode(base64_string)
 
-        with open(generated_audio_path, "wb") as f:
-            f.write(audio_data)
+        # with open(generated_audio_path, "wb") as f:
+        #     f.write(audio_data)
 
-        return {"reply": reply, "audio_url": f"{generated_audio_path}"}
+        return {"reply": reply, "audio": f"{audio_data}"}
 
     except Exception as e:
         raise HTTPException(500, f"{str(e)}")
