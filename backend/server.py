@@ -234,20 +234,22 @@ def handle_audio(audio_file: UploadFile = File(...)):
         os.makedirs('uploads', exist_ok=True)
         temp_input_path = os.path.join('uploads', audio_file.filename)
         wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
+        generated_audio_path = os.path.join("uploads", f"tts_{int(time.time())}.wav")
         
         with open(temp_input_path, "wb+") as file_object:
             shutil.copyfileobj(audio_file.file, file_object)
 
          # Convert to WAV
-        def convert_3gp_to_wav(input_file, output_file):
-            (
-                ffmpeg
-                .input(input_file)
-                .output(output_file, format="wav")
-                .run(overwrite_output=True)
-            )
+        # def convert_3gp_to_wav(input_file, output_file):
+        #     (
+        #         ffmpeg
+        #         .input(input_file)
+        #         .output(output_file, format="wav")
+        #         .run(overwrite_output=True)
+        #     )
     
-        convert_3gp_to_wav(temp_input_path, wav_path)
+        # convert_3gp_to_wav(temp_input_path, wav_path)
+        os.system(f"ffmpeg -i {temp_input_path}, {wav_path}")
 
         # Convert audio to text
         with wave.open(wav_path, "rb") as audio:
