@@ -269,12 +269,12 @@ def handle_audio(audio_file: UploadFile = File(...)):
             voice="af_heart",
             api_name="/generate_speech_as_bytes"
         )
-        audio_data = base64.b64decode(base64_string)
+        # audio_data = base64.b64decode(base64_string)
 
         # with open(generated_audio_path, "wb") as f:
         #     f.write(audio_data)
 
-        return {"reply": reply, "audio": f"{audio_data}"}
+        return {"reply": reply, "audio": f"{base64_string}"}
 
     except Exception as e:
         raise HTTPException(500, f"{str(e)}")
