@@ -20,4 +20,3 @@ openai
 gradio_client
 scikit-learn
 python-multipart
-pydub
