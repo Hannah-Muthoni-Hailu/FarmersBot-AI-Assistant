@@ -232,7 +232,7 @@ def handle_audio(audio_file: UploadFile = File(...)):
     
     try:
         os.makedirs('uploads', exist_ok=True)
-        input_path = os.path.join('uploads', audio_file.filename)
+        temp_input_path = os.path.join('uploads', audio_file.filename)
         wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
         
         with open(temp_input_path, "wb+") as file_object:
@@ -271,7 +271,7 @@ def handle_audio(audio_file: UploadFile = File(...)):
         return {"reply": reply, "audio_url": f"{generated_audio_path}"}
 
     except Exception as e:
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, f"{str(e)}")
     finally:
         audio_file.file.close()
         for path in [temp_input_path, wav_path]:
