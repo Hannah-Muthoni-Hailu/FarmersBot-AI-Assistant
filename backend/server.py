@@ -229,12 +229,12 @@ def handle_audio(audio_file: UploadFile = File(...)):
         load_audio_models()
     except Exception as e:
         raise HTTPException(500, f"Error loading audio models: {str(e)}")
-
-    os.makedirs('uploads', exist_ok=True)
-    input_path = os.path.join('uploads', audio_file.filename)
-    wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
     
     try:
+        os.makedirs('uploads', exist_ok=True)
+        input_path = os.path.join('uploads', audio_file.filename)
+        wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
+        
         with open(temp_input_path, "wb+") as file_object:
             shutil.copyfileobj(audio_file.file, file_object)
 
