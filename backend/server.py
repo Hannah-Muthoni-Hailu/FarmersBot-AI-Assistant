@@ -202,6 +202,7 @@ def handle_image_audio(imageFile: UploadFile = File(...),):
     global intent
     
     try:
+        load_audio_models()
         os.makedirs('uploads', exist_ok=True)
         
         IMAGE = os.path.join('uploads', imageFile.filename)
@@ -223,11 +224,6 @@ def handle_image_audio(imageFile: UploadFile = File(...),):
 
     except Exception as e:
         raise HTTPException(500, f"{str(e)}")
-    finally:
-        audio_file.file.close()
-        for path in [temp_input_path, wav_path]:
-            if os.path.exists(path):
-                os.remove(path)
 
 @app.post("/audio")
 def handle_audio(audio_file: UploadFile = File(...)):
