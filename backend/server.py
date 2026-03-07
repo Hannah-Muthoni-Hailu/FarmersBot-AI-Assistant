@@ -240,12 +240,12 @@ def handle_audio(audio_file: UploadFile = File(...)):
 
          # Convert to WAV
         def convert_3gp_to_wav(input_file, output_file):
-        (
-            ffmpeg
-            .input(input_file)
-            .output(output_file, format="wav")
-            .run(overwrite_output=True)
-        )
+            (
+                ffmpeg
+                .input(input_file)
+                .output(output_file, format="wav")
+                .run(overwrite_output=True)
+            )
     
         convert_3gp_to_wav(temp_input_path, wav_path)
 
