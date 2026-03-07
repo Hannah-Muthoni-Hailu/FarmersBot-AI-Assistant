@@ -197,29 +197,37 @@ def handle_image(imageFile: UploadFile = File(...),):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/image_audio")
-def handle_image_audio(data: UserAudioImage):
-    load_audio_models() # Load necessary models
+def handle_image_audio(imageFile: UploadFile = File(...),):
+    global IMAGE
+    global intent
     
-    reply = data.text
-    audio_filename = f"generated_{int(time.time())}.wav"
-    generated_audio_path = os.path.join(BASE_DIR, "data", audio_filename)
-    os.makedirs(os.path.dirname(generated_audio_path), exist_ok=True)
-
     try:
+        os.makedirs('uploads', exist_ok=True)
+        
+        IMAGE = os.path.join('uploads', imageFile.filename)
+        
+        # Save the file using shutil (FastAPI doesn't have .save())
+        with open(IMAGE, "wb") as buffer:
+            shutil.copyfileobj(imageFile.file, buffer)
+
+        intent = 'crop_growth_analysis'
+        reply = handle_intent('')
+
         base64_string = tts_client.predict(
             text=reply,
             voice="af_heart",
             api_name="/generate_speech_as_bytes"
         )
-        audio_data = base64.b64decode(base64_string)
 
-        with open(generated_audio_path, "wb") as f:
-            f.write(audio_data)
+        return {"reply": reply, "audio": f"{base64_string}"}
 
     except Exception as e:
-        raise HTTPException(500, str(e))
-
-    return {"audio_url": f"/audio/{audio_filename}"}
+        raise HTTPException(500, f"{str(e)}")
+    finally:
+        audio_file.file.close()
+        for path in [temp_input_path, wav_path]:
+            if os.path.exists(path):
+                os.remove(path)
 
 @app.post("/audio")
 def handle_audio(audio_file: UploadFile = File(...)):
@@ -269,10 +277,6 @@ def handle_audio(audio_file: UploadFile = File(...)):
             voice="af_heart",
             api_name="/generate_speech_as_bytes"
         )
-        # audio_data = base64.b64decode(base64_string)
-
-        # with open(generated_audio_path, "wb") as f:
-        #     f.write(audio_data)
 
         return {"reply": reply, "audio": f"{base64_string}"}
 
