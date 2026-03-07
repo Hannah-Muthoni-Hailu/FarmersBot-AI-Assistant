@@ -28,18 +28,15 @@ import wave
 import base64
 from gradio_client import Client, handle_file
 import ast
+import ffmpeg
 
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
-
-from pydub import AudioSegment
 
 SECRET_KEY = "CHANGE_THIS"
 ALGORITHM = "HS256"
 
 app = FastAPI()
-
-AudioSegment.converter = os.path.join(os.getcwd(), "ffmpeg", "ffmpeg")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "ai_models", "best_intent_model.joblib")
@@ -234,17 +231,23 @@ def handle_audio(audio_file: UploadFile = File(...)):
         raise HTTPException(500, f"Error loading audio models: {str(e)}")
 
     os.makedirs('uploads', exist_ok=True)
-    temp_input_path = os.path.join('uploads', audio_file.filename)
+    input_path = os.path.join('uploads', audio_file.filename)
     wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
     
     try:
         with open(temp_input_path, "wb+") as file_object:
             shutil.copyfileobj(audio_file.file, file_object)
 
-        # Convert to WAV
-        audio_conv = AudioSegment.from_file(temp_input_path)
-        audio_conv = audio_conv.set_channels(1).set_frame_rate(16000)
-        audio_conv.export(wav_path, format="wav")
+         # Convert to WAV
+        def convert_3gp_to_wav(input_file, output_file):
+        (
+            ffmpeg
+            .input(input_file)
+            .output(output_file, format="wav")
+            .run(overwrite_output=True)
+        )
+    
+        convert_3gp_to_wav(temp_input_path, wav_path)
 
         # Convert audio to text
         with wave.open(wav_path, "rb") as audio:
