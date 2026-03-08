@@ -567,16 +567,16 @@ def run_simulation():
                 return f"{n}th"
             return f"{n}{['th','st','nd','rd','th','th','th','th','th','th'][n % 10]}"
 
-        if DOA:
+        if summary['DOA']:
             new_date = summary['DOA'] + relativedelta(years=1)
             harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
-        elif DOM:
+        elif summary['DOM']:
             new_date = summary['DOM'] + relativedelta(years=1)
             harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
-        elif DOH:
+        elif summary['DOH']:
             new_date = summary['DOH'] + relativedelta(years=1)
             harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
-        elif DOV:
+        elif summary['DOV']:
             new_date = summary['DOV'] + relativedelta(years=1)
             harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
         
