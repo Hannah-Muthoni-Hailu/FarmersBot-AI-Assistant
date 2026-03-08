@@ -228,18 +228,19 @@ COUNTER = 0
 @app.post("/audio")
 def handle_audio(audio_file: UploadFile = File(...)):
     global COUNTER
+    load_audio_models()
 
     if COUNTER == 0:
         reply = "Hello. How may I help you"
-        with open(os.path.join(BASE_DIR, "data", "download (4).wav"), 'rb') as file_obj:
-            audio_data = file_obj.read()
-            base64_string = base64.b64encode(audio_data)
     elif COUNTER == 1:
         reply = "Your expected harvest date is August 2nd 2026. With optimal conditions, you can expect a yeild of 1536 kilograms per hectare. The total amount of water you can expect to use is 5000 tonnes per hectare"
-        with open(os.path.join(BASE_DIR, "data", "download.wav"), 'rb') as file_obj:
-            audio_data = file_obj.read()
-            base64_string = base64.b64encode(audio_data)
         COUNTER = -1
+
+    base64_string = tts_client.predict(
+            text=reply,
+            voice="af_heart",
+            api_name="/generate_speech_as_bytes"
+        )
     
     COUNTER += 1
     return {"reply": reply, "audio": f"{base64_string}"}
