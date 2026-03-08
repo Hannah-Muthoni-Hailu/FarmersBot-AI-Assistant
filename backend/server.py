@@ -579,21 +579,22 @@ def run_simulation():
         elif summary['DOV']:
             new_date = summary['DOV'] + relativedelta(years=1)
             harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
-        
-        yeild = summary['TWSO']
     
         output = model.get_output()
         total_transpiration = sum(day['TRA'] for day in output if day['TRA'] is not None)
-        total_evaporation = sum(day['CEVST'] for day in output if day['CEVST'] is not None)
-    
-        total_water_use = total_transpiration + total_evaporation * 100000
+        if 'CEVST' in output[0].keys():
+            total_evaporation = sum(day['CEVST'] for day in output if day['CEVST'] is not None)
+            total_water_use = total_transpiration + total_evaporation * 100000
         
         intent = None
         pending_intent = None
         del crop_sim_data['crop_name']
         del crop_sim_data['crop_variety']
-    
-        return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
+
+        if harvest_date and yeild and total_water_use:
+            return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
+        else:
+            return "We are sorry but the simulation could not be performed. Please try again later or try a different crop"
 
     except Exception as e:
         raise HTTPException(500, f"Error performing simulation {str(e)}")
