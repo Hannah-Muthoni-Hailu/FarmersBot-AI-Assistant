@@ -579,12 +579,21 @@ def run_simulation():
         elif summary['DOV']:
             new_date = summary['DOV'] + relativedelta(years=1)
             harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
+        else:
+            harvest_date = None
     
         output = model.get_output()
         total_transpiration = sum(day['TRA'] for day in output if day['TRA'] is not None)
         if 'CEVST' in output[0].keys():
             total_evaporation = sum(day['CEVST'] for day in output if day['CEVST'] is not None)
             total_water_use = total_transpiration + total_evaporation * 100000
+        else:
+            total_water_use = None
+
+        if 'TWSO' in output[-1].keys():
+            yeild = output[1]['TWSO']
+        else:
+            yeild = None
         
         intent = None
         pending_intent = None
