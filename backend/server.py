@@ -600,11 +600,13 @@ def run_simulation():
         del crop_sim_data['crop_name']
         del crop_sim_data['crop_variety']
 
-        if harvest_date and yeild and total_water_use:
-            return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
-        else:
-            return "We are sorry but the simulation could not be performed. Please try again later or try a different crop"
+        # if harvest_date and yeild and total_water_use:
+        #     return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
+        # else:
+        #     return "We are sorry but the simulation could not be performed. Please try again later or try a different crop"
+        return f"{str(summary)}"
 
+    
     except Exception as e:
         raise HTTPException(500, f"Error performing simulation {str(e)}")
         
