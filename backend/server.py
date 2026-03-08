@@ -224,12 +224,9 @@ def handle_image_audio(imageFile: UploadFile = File(...),):
 
 # To remove
 COUNTER = 0
-
-class UserAudio(BaseModel):
-   audio: str
     
 @app.post("/audio")
-def handle_audio(data: UserAudio):
+def handle_audio(audio_file: UploadFile = File(...)):
     global COUNTER
 
     if COUNTER == 0:
