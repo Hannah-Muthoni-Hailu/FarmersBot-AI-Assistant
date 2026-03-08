@@ -96,9 +96,6 @@ class UserMessage(BaseModel):
 class UserImage(BaseModel):
     files: UploadFile
 
-class UserAudio(BaseModel):
-   audio: str
-
 class UserAudioImage(BaseModel):
    text: str
 
@@ -225,64 +222,87 @@ def handle_image_audio(imageFile: UploadFile = File(...),):
     except Exception as e:
         raise HTTPException(500, f"{str(e)}")
 
-@app.post("/audio")
-def handle_audio(audio_file: UploadFile = File(...)):
-    if not audio_file.filename.endswith(('.3gp', '.wav', '.mp3')):
-        raise HTTPException(status_code=400, detail="Unsupported audio format")
+# To remove
+COUNTER = 0
 
-    try:
-        load_audio_models()
-    except Exception as e:
-        raise HTTPException(500, f"Error loading audio models: {str(e)}")
+class UserAudio(BaseModel):
+   audio: str
     
-    try:
-        os.makedirs('uploads', exist_ok=True)
-        temp_input_path = os.path.join('uploads', audio_file.filename)
-        wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
-        # generated_audio_path = os.path.join("uploads", f"tts_{int(time.time())}.wav")
+@app.post("/audio")
+def handle_audio(data: UserAudio):
+    global COUNTER
+
+    if COUNTER == 0:
+        reply = "Hello. How may I help you"
+        with open(os.path.join(BASE_DIR, "data", "download (4).wav"), 'rb') as file_obj:
+            audio_data = file_obj.read()
+            base64_string = base64.b64encode(audio_data)
+    elif COUNTER == 1:
+        reply = "Your expected harvest date is August 2nd 2026. With optimal conditions, you can expect a yeild of 1536 kilograms per hectare. The total amount of water you can expect to use is 5000 tonnes per hectare"
+        with open(os.path.join(BASE_DIR, "data", "download.wav"), 'rb') as file_obj:
+            audio_data = file_obj.read()
+            base64_string = base64.b64encode(audio_data)
+        COUNTER = -1
+    
+    COUNTER += 1
+    return {"reply": reply, "audio": f"{base64_string}"}
+
+# def handle_audio(audio_file: UploadFile = File(...)):
+#     if not audio_file.filename.endswith(('.3gp', '.wav', '.mp3')):
+#         raise HTTPException(status_code=400, detail="Unsupported audio format")
+
+#     try:
+#         load_audio_models()
+#     except Exception as e:
+#         raise HTTPException(500, f"Error loading audio models: {str(e)}")
+    
+#     try:
+#         os.makedirs('uploads', exist_ok=True)
+#         temp_input_path = os.path.join('uploads', audio_file.filename)
+#         wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
         
-        with open(temp_input_path, "wb+") as file_object:
-            shutil.copyfileobj(audio_file.file, file_object)
+#         with open(temp_input_path, "wb+") as file_object:
+#             shutil.copyfileobj(audio_file.file, file_object)
 
-         # Convert to WAV
-        # os.system(f"ffmpeg -i {temp_input_path} {wav_path}")
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-i", temp_input_path,
-                "-ar", "16000",      # sample rate
-                "-ac", "1",          # mono
-                "-f", "wav",
-                wav_path
-            ],
-            check=True
-        )
+#          # Convert to WAV
+#         # os.system(f"ffmpeg -i {temp_input_path} {wav_path}")
+#         subprocess.run(
+#             [
+#                 "ffmpeg",
+#                 "-y",
+#                 "-i", temp_input_path,
+#                 "-ar", "16000",      # sample rate
+#                 "-ac", "1",          # mono
+#                 "-f", "wav",
+#                 wav_path
+#             ],
+#             check=True
+#         )
 
-        # Convert audio to text
-        with wave.open(wav_path, "rb") as audio:
-            rec = KaldiRecognizer(att_model, 16000)
-            all_frames = audio.readframes(audio.getnframes())
-            rec.AcceptWaveform(all_frames)
-            result_text = json.loads(rec.FinalResult())["text"]
+#         # Convert audio to text
+#         with wave.open(wav_path, "rb") as audio:
+#             rec = KaldiRecognizer(att_model, 16000)
+#             all_frames = audio.readframes(audio.getnframes())
+#             rec.AcceptWaveform(all_frames)
+#             result_text = json.loads(rec.FinalResult())["text"]
 
-        reply = handle_intent(result_text)
+#         reply = handle_intent(result_text)
 
-        base64_string = tts_client.predict(
-            text=reply,
-            voice="af_heart",
-            api_name="/generate_speech_as_bytes"
-        )
+#         base64_string = tts_client.predict(
+#             text=reply,
+#             voice="af_heart",
+#             api_name="/generate_speech_as_bytes"
+#         )
 
-        return {"reply": reply, "audio": f"{base64_string}"}
+#         return {"reply": reply, "audio": f"{base64_string}"}
 
-    except Exception as e:
-        raise HTTPException(500, f"{str(e)}")
-    finally:
-        audio_file.file.close()
-        for path in [temp_input_path, wav_path]:
-            if os.path.exists(path):
-                os.remove(path)
+#     except Exception as e:
+#         raise HTTPException(500, f"{str(e)}")
+#     finally:
+#         audio_file.file.close()
+#         for path in [temp_input_path, wav_path]:
+#             if os.path.exists(path):
+#                 os.remove(path)
 
 @app.get("/audio/{filename}")
 def get_audio(filename: str, background_tasks: BackgroundTasks):
