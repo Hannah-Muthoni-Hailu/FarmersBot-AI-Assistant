@@ -5,14 +5,12 @@ from kivymd.app import MDApp
 from kivymd.uix.menu import MDDropdownMenu
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget
-from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.properties import BooleanProperty, StringProperty
 from kivy.core.audio import SoundLoader
 import requests
 
 from kivy.uix.textinput import TextInput
-from kivymd.uix.list import OneLineListItem
 from kivymd.uix.label import MDLabel
 from kivymd.uix.card import MDCard
 from kivymd.toast import toast
@@ -20,16 +18,30 @@ from kivy.metrics import dp
 from kivy.clock import Clock
 from kivy.storage.jsonstore import JsonStore
 
-import time
-
-import sounddevice as sd
-import numpy as np
-from scipy.io.wavfile import write
 import threading
+from camera4kivy import Preview
+from plyer import audio
+import base64
 
-import pygame
+os.environ['KIVY_AUDIO'] = 'ffpyplayer'
 
-pygame.mixer.init()
+class CameraPopup(ModalView):
+    def __init__(self, callback, **kwargs):
+        super().__init__(**kwargs)
+        self.callback = callback
+        self.ids.preview.connect_camera(filepath_callback=self.on_photo_saved)
+
+    def do_capture(self):
+        self.ids.preview.capture_photo(location='private', name="my_capture")
+
+    def on_photo_saved(self, path):
+        self.callback(path)
+        self.dismiss()
+
+    def on_dismiss(self):
+        self.ids.preview.disconnect_camera()
+        return False
+
 
 class FocusTextInput(TextInput):
     def on_touch_down(self, touch):
@@ -45,11 +57,113 @@ class SignupPage(Screen):
 
     def open_subcounty_menu(self):
         subcounties = [
-            "Mvita",
-            "Kisumu Central",
-            "Kitui West",
+            "Ainabkoi",
+            "Ainamoi",
+            "Aldai",
+            "Alego Usonga",
+            "Athi River",
+            "Awendo",
+            "Balambala",
+            "BANISSA",
+            "Baringo Central",
+            "Baringo North",
+            "Belgut",
+            "Bobasi",
+            "Bomachoge Borabu",
+            "Bomachoge Chache",
+            "Bomet Central",
+            "Bomet East",
+            "Bonchari",
+            "Bondo",
+            "Borabu",
             "Bumula",
-            "Nyakach"
+            "Bunyala",
+            "Bura",
+            "Bureti",
+            "Butere",
+            "Butula",
+            "Buuri",
+            "Changamwe",
+            "Chepalungu",
+            "Cheptais",
+            "Cherengany",
+            "Chesumei",
+            "Chuka",
+            "Dadaab",
+            "Dagoretti North",
+            "Dagoretti South",
+            "East Pokot",
+            "Eldas",
+            "Embakasi Central",
+            "Embakasi East",
+            "Embakasi North",
+            "Embakasi South",
+            "Embakasi West",
+            "Emgwen",
+            "Emuhaya",
+            "Endebess",
+            "Fafi",
+            "Galole",
+            "Ganze",
+            "Garbatulla",
+            "Garissa",
+            "Garsen",
+            "Gatanga",
+            "Gatundu North",
+            "Gem",
+            "Gilgil",
+            "Githunguri",
+            "Hamisi",
+            "Homa Bay Town",
+            "Hulugho",
+            "Igambang'ombe",
+            "Igembe Central",
+            "Igembe North",
+            "Igembe South",
+            "Ijara",
+            "Ikolomani",
+            "Imenti Central",
+            "Imenti North",
+            "Imenti South",
+            "Isiolo",
+            "Jomvu",
+            "Juja",
+            "Kabete"
+            "Kabondo Kasipul",
+            "Kabuchai",
+            "Kaiti",
+            "Kajiado Central",
+            "Kajiado East",
+            "Kajiado North",
+            "Kajiado West",
+            "Kalama",
+            "Kaloleni",
+            "Kamukunji",
+            "Kandara",
+            "Kandunyi",
+            "Kangemi",
+            "Kangundo",
+            "Kapsaret",
+            "Karachuonyo",
+            "Kasarani",
+            "Kasipul",
+            "Kathiani",
+            "Keiyo North",
+            "Keiyo South",
+            "Kesses",
+            "Khwisero",
+            "Kiambaa",
+            "Kiambu Town",
+            "Kibish",
+            "Kibra",
+            "Kibwezi East",
+            "Kibwezi West",
+            "Kieni East",
+            "Kieni West",
+            "Kigumo",
+            "Kiharu",
+            "Kikuyu",
+            "Kilifi North"
         ]
 
         menu_items = [
@@ -74,6 +188,7 @@ class SignupPage(Screen):
         self.menu.dismiss()
 
     def process_signup(self):
+        toast("Signup process started")
         self.error_message = ""
         card = self.ids.signup_card
         username = card.ids.username_input.text
@@ -86,10 +201,12 @@ class SignupPage(Screen):
         if not username or not password:
             self.error_message = "Username and password are required"
             return
-        
+
+        # Check length of password
         if len(password) > 256:
             self.error_message = "Password too long"
 
+        # Ensure that a subcounty has been selected
         if not self.selected_subcounty:
             self.show_error("Please select your subcounty")
             return
@@ -102,17 +219,27 @@ class SignupPage(Screen):
                 "subcounty": self.selected_subcounty
             }
             response = requests.post(
-                "https://random-qh2n.onrender.com/signup",
+                "https://farmersbot-ai-assistant.onrender.com/signup",
                 json=payload,
-                timeout=5
+                timeout=240
             )
 
             if response.status_code == 200:
+                data = response.json()
                 app = App.get_running_app()
                 app.current_username = username
                 app.current_input_type = input_type
                 app.current_subcounty = self.selected_subcounty
-                # 3. Conditional Navigation on success
+                # Save authentication token
+                if app.auth_token:
+                    app.store.put(
+                        "auth",
+                        token=app.auth_token,
+                        username=app.current_username,
+                        input_type=app.current_input_type,
+                        subcounty=app.current_subcounty,
+                    )
+                # Conditional Navigation on success
                 if input_type == "audio":
                     self.manager.current = "audioinput"
                 else:
@@ -123,14 +250,28 @@ class SignupPage(Screen):
             self.error_message = "Cannot connect to server"
 
     def process_login(self):
+        toast("Login process started")
         self.error_message = ""
         card = self.ids.signup_card
         username = card.ids.username_input.text
         password = card.ids.password_input.text
 
+        # Ensure fields aren't empty
+        if not username or not password:
+            self.error_message = "Username and password are required"
+            return
+        
+        if len(password) > 256:
+            self.error_message = "Password too long"
+
+        payload = {
+            "username": username,
+            "password": password,
+        }
         response = requests.post(
-            "https://random-qh2n.onrender.com/login",
-            json={"username": username, "password": password}
+            "https://farmersbot-ai-assistant.onrender.com/login",
+            json=payload,
+            timeout=240
         )
 
         if response.status_code == 200:
@@ -153,129 +294,64 @@ class SignupPage(Screen):
             else:
                 self.manager.current = "textinput"
         else:
-            self.error_message = response.json().get("detail", "Signup failed")
+            self.error_message = response.text
 
     def toggle_mode(self):
         self.is_login_mode = not self.is_login_mode
 
 class AudioInput(Screen):
-    is_recording = BooleanProperty(False)
-    response_audio_path = StringProperty("")
-    generated_audio = StringProperty("")
-    _recording_thread = None
-    _recording_stop = threading.Event()
-    _frames = None
-    _samplerate = 16000
-    _channels = 1
-    _response_sound = None
-    cam_screen = None
+    is_recording = False
 
-    def build(self):
-        pass
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.data_dir = App.get_running_app().user_data_dir
+        self.audio_path = os.path.join(self.data_dir, "voice_note.3gp")
 
-    def _record_worker(self):
-        self._frames = []
-        self._recording_stop.clear()
-
-        def callback(indata, frames, time_info, status):
-            if status:
-                print("Audio stream status:", status)
-            self._frames.append(indata.copy())
-
+    def start_recording(self):
         try:
-            with sd.InputStream(
-                samplerate=self._samplerate,
-                channels=self._channels,
-                dtype="int16",
-                callback=callback,
-            ):
-                while not self._recording_stop.is_set():
-                    sd.sleep(100)
-        except Exception as e:
-            print("Failed to start audio stream:", e)
-
-    def _build_audio_path(self):
-        backend_data_path = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "backend",
-            "data",
-        )
-        os.makedirs(backend_data_path, exist_ok=True)
-        filename = f"recorded_{int(time.time())}.wav"
-        return os.path.join(backend_data_path, filename)
-
-    def _build_response_audio_path(self):
-        frontend_data_path = os.path.join(
-            os.path.dirname(__file__),
-            "data",
-        )
-        os.makedirs(frontend_data_path, exist_ok=True)
-        filename = f"response_{int(time.time())}.wav"
-        return os.path.join(frontend_data_path, filename)
-    
-    def record_audio(self):
-        if not self.is_recording:
+            # Prepare the recorder with the file path
             self.is_recording = True
-            self.ids.record_audio.text = "Stop recording"
-            toast("Recording started")
-            self._recording_thread = threading.Thread(
-                target=self._record_worker,
-                daemon=True,
-            )
-            self._recording_thread.start()
-            return
+            audio.file_path = self.audio_path
+            audio.start()
+            toast("Recording started...")
+            print("Recording started...")
+        except Exception as e:
+            toast("Please press the button again.")
+            print(f"Error starting record: {e}")
 
-        self._recording_stop.set()
-        if self._recording_thread:
-            self._recording_thread.join(timeout=2.0)
-        self.is_recording = False
-        self.ids.record_audio.text = "Record audio"
-
-        if not self._frames:
-            print("No audio captured")
-            return
-
-        audio_data = np.concatenate(self._frames, axis=0)
-        filepath = self._build_audio_path()
-        write(filepath, self._samplerate, audio_data)
-        print("Saved audio to:", filepath)
-
-        self._set_audio_loading(True)
-        threading.Thread(
-            target=self._send_audio_request,
-            args=(filepath,),
-            daemon=True,
-        ).start()
-
-    def _send_audio_request(self, filepath):
+    def stop_recording(self):
         try:
-            response = requests.post(
-                "https://random-qh2n.onrender.com/audio",
-                json={"audio": filepath},
-                timeout=30,
-            )
+            self.is_recording = False
+            audio.stop()
+            toast("Recording stopped")
+            print(f"Recording saved at: {self.audio_path}")
+            self.upload_audio(self.audio_path)
+        except Exception as e:
+            toast("Please try recording again.")
+            print(f"Error stopping record: {e}")
 
-            if response.status_code == 200:
-                payload = response.json()
-                reply = payload.get("reply", "")
-                audio_url = payload.get("audio_url")
-                print("Server replied:", reply)
+    def upload_audio(self, audio_path):
+        try:
+            with open(audio_path, 'rb') as f:
+                files = {'audio_file': (os.path.basename(audio_path), f, 'audio/3gp')} # Send decoded file for easier transfer
+                
+                response = requests.post(
+                    "https://farmersbot-ai-assistant.onrender.com/audio", 
+                    files=files, 
+                    timeout=180)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    audio_b64 = data.get("audio")
 
-                if audio_url:
-                    audio_response = requests.get(
-                        f"https://random-qh2n.onrender.com{audio_url}",
-                        timeout=30,
-                    )
-                    if audio_response.status_code == 200:
-                        response_path = self._build_response_audio_path()
-                        with open(response_path, "wb") as f:
-                            f.write(audio_response.content)
-                        self.response_audio_path = response_path
-                        threading.Thread(target=self.play_response, daemon=True).start()
-
-        except Exception:
-            print("Failed to send message")
+                    if audio_b64:
+                        self.play_response_audio(audio_b64)
+                else:
+                    toast("Server error. Try again.")
+                    print(f"Upload failed: {response.status_code} - {response.text}")
+        except Exception as e:
+            toast("There was an issue with the server.")
+            print(f"Network error: {e}")
         finally:
             Clock.schedule_once(lambda *_: self._set_audio_loading(False), 0)
 
@@ -286,115 +362,80 @@ class AudioInput(Screen):
         spinner.active = is_loading
         spinner.opacity = 1 if is_loading else 0
 
-    def play_response(self):
-        print("Playing Audio")
-        if not self.response_audio_path or not os.path.isfile(self.response_audio_path):
-            print("No response audio available")
+    def play_response_audio(self, audio_b64):
+        temp_path = os.path.join(self.data_dir, "response.wav")
+        with open(temp_path, "wb") as f:
+            f.write(base64.b64decode(audio_b64)) # Decode the server audio
+
+        Clock.schedule_once(lambda dt: self._load_and_play(temp_path), 0.1)
+
+    def _load_and_play(self, path):
+        abs_path = os.path.abspath(path)
+        sound = SoundLoader.load(abs_path)
+        if sound:
+            # Cleanup function to run when audio ends
+            def cleanup(instance):
+                try:
+                    instance.unload() # Release the file handle
+                    os.remove(abs_path)
+                    print("Temporary audio cleaned up.")
+                except Exception as e:
+                    print(f"Cleanup error: {e}")
+
+            sound.bind(on_stop=cleanup)
+            sound.play()
+        else:
+            print(f"CRITICAL: Could not load sound from {abs_path}")
+            if os.path.exists(abs_path):
+                os.remove(abs_path)
+
+    # Opens the image capture popup
+    def capture_image(self):
+        popup = CameraPopup(callback=self.handle_camera_data)
+        popup.open()
+
+    def handle_camera_data(self, path):
+        if not path or not os.path.exists(path):
+            toast("Invalid image. Try again!")
+            print("Invalid image path")
             return
         
+        toast("You response is being generated!")
+        threading.Thread(target=self.upload_to_server, args=(path,), daemon=True).start()
+
+    def upload_to_server(self, image_path):
         try:
-            pygame.mixer.music.load(self.response_audio_path)
-            pygame.mixer.music.play()
-            # Optional: wait for it to finish so the file isn't locked
-            while pygame.mixer.music.get_busy():
-                pygame.time.Clock().tick(10)
-
-        except Exception as e:
-            print(f"Playback error: {e}")
-        finally:
-            print(self.response_audio_path)
-            if self.response_audio_path and os.path.isfile(self.response_audio_path):
-                try:
-                    os.remove(self.response_audio_path)
-                except Exception as e:
-                    print("Failed to delete response audio:", e)
-
-            self.response_audio_path = ""
-
-    def capture_image(self):
-        self.cam_screen = Builder.load_string('''
-BoxLayout:
-    orientation: 'vertical'
-    Camera:
-        id: cam
-        resolution: (640, 480)
-        play: True
-    MDRaisedButton:
-        text: "Capture"
-        on_release: app.root.get_screen('audioinput').send_image(cam)
-''')
-        self.add_widget(self.cam_screen)
-
-    def send_image(self, cam):
-        backend_data_path = os.path.join(os.path.dirname(__file__), '..', 'backend', 'data')
-        os.makedirs(backend_data_path, exist_ok=True)  # make sure folder exists
-
-        filename = f"captured_{int(time.time())}.png"
-        filepath = os.path.join(backend_data_path, filename)
-
-        cam.export_to_png(filepath)
-        
-        cam.play = False  # stops the live feed
-        cam._camera = None  # release low-level camera reference
-
-        # Remove the camera widget from the screen
-        if self.cam_screen:
-            self.remove_widget(self.cam_screen)
-            self.cam_screen = None
-        self._set_audio_loading(True)
-        threading.Thread(
-            target=self._send_image_audio_request,
-            args=(filepath,),
-            daemon=True,
-        ).start()
-
-    def _send_image_audio_request(self, filepath):
-        try:
-            response = requests.post(
-                "https://random-qh2n.onrender.com/image",
-                json={"image": filepath},
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                reply = response.json().get("reply", "")
-                if not reply:
-                    return
+            with open(image_path, 'rb') as f:
+                files = {'imageFile': (os.path.basename(image_path), f, 'image/jpeg')}
+                
+                print(f"Uploading {image_path}")
 
                 response = requests.post(
-                    "https://random-qh2n.onrender.com/image_audio",
-                    json={"text": reply},
-                    timeout=30,
+                    "https://farmersbot-ai-assistant.onrender.com/image_audio",
+                    files=files,
+                    timeout=180
                 )
-
+                
                 if response.status_code == 200:
-                    payload = response.json()
-                    audio_url = payload.get("audio_url")
+                    data = response.json()
+                    reply_text = data.get("reply")
+                    audio_b64 = data.get("audio")
 
-                    if audio_url:
-                        audio_response = requests.get(
-                            f"https://random-qh2n.onrender.com{audio_url}",
-                            timeout=30,
-                        )
-                        if audio_response.status_code == 200:
-                            response_path = self._build_response_audio_path()
-                            with open(response_path, "wb") as f:
-                                f.write(audio_response.content)
-                            self.response_audio_path = response_path
-                            threading.Thread(target=self.play_response, daemon=True).start()
-        except Exception:
-            print("Failed to generate audio")
+                    if audio_b64:
+                        print(reply_text)
+                        self.play_response_audio(audio_b64)
+                else:
+                    toast("An error occured")
+                    print(f"Upload failed (Status {response.status_code}): {response.text}")
+                    
+        except Exception as e:
+            toast("An error occured")
+            print("Failed to send message: ", str(e))
         finally:
             Clock.schedule_once(lambda *_: self._set_audio_loading(False), 0)
-        
-
-    def image_response(self):
-        pass
 
 class TextInputScreen(Screen):
-    cam_screen = None
-    chat_padding = dp(20)
-
+    # Sends text input to server
     def send_message(self):
         message = self.ids.message_input.text.strip()
         try:
@@ -403,24 +444,33 @@ class TextInputScreen(Screen):
         except Exception as e:
             print("Failed to update chat list:", e)
 
+        # Check that the input tab is not empty
         if not message:
+            toast("Please input a message")
             return
 
         try:
+            toast("Generating a response")
             response = requests.post(
-                "https://random-qh2n.onrender.com/message",
+                "https://farmersbot-ai-assistant.onrender.com/message",
                 json={"message": message},
-                timeout=30
+                timeout=180
             )
 
             if response.status_code == 200:
                 reply = response.json()["reply"]
                 print("Server replied:", reply)
                 self.show_reply(reply)
+            else:
+                error_message = f"Server error: {response.text}"
+                print(error_message)
+                self.show_reply(error_message)
 
         except Exception:
-            print("Failed to send message")
+            toast("An error was encountered")
+            print("Failed to send message: ", str(e))
 
+    # Print reply to screen
     def show_reply(self, reply):
         self.response = reply
         try:
@@ -430,57 +480,11 @@ class TextInputScreen(Screen):
         except Exception as e:
             print("Failed to update chat list:", e)
 
-    def capture_image(self):
-        self.cam_screen = Builder.load_string('''
-BoxLayout:
-    orientation: 'vertical'
-    Camera:
-        id: cam
-        resolution: (640, 480)
-        play: True
-    MDRaisedButton:
-        text: "Capture"
-        on_release: app.root.get_screen('textinput').send_image(cam)
-''')
-        self.add_widget(self.cam_screen)
-
-    def send_image(self, cam):
-        backend_data_path = os.path.join(os.path.dirname(__file__), '..', 'backend', 'data')
-        os.makedirs(backend_data_path, exist_ok=True)  # make sure folder exists
-
-        filename = f"captured_{int(time.time())}.png"
-        filepath = os.path.join(backend_data_path, filename)
-
-        cam.export_to_png(filepath)
-        
-        cam.play = False  # stops the live feed
-        cam._camera = None  # release low-level camera reference
-
-        # Remove the camera widget from the screen
-        if self.cam_screen:
-            self.remove_widget(self.cam_screen)
-            self.cam_screen = None
-
-        try:
-            response = requests.post(
-                "https://random-qh2n.onrender.com/image",
-                json={"image": filepath},
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                print("Responded")
-                reply = response.json()["reply"]
-                print("Server replied:", reply)
-                self.show_reply(reply)
-
-        except Exception:
-            print("Failed to send message")
-
-    def _scroll_chat_to_bottom(self, *args):
+    def _scroll_chat_to_bottom(self, *args): # Allows the screen to automatically scroll when text buttons flow below the screen
         if "chat_scroll" in self.ids:
             self.ids.chat_scroll.scroll_y = 0
 
+    # Generates the text bubble
     def _make_chat_bubble(self, text, is_user=False):
         row = BoxLayout(
             size_hint_y=None,
@@ -525,31 +529,184 @@ BoxLayout:
         row.height = bubble.height
         return row
 
+    # Opens the image capture popup
+    def capture_image(self):
+        popup = CameraPopup(callback=self.handle_camera_data)
+        popup.open()
+
+    def handle_camera_data(self, path):
+        if not path or not os.path.exists(path):
+            toast("Invalid image. Try again!")
+            print("Invalid image path")
+            return
+        
+        toast("You response is being generated!")
+        threading.Thread(target=self.upload_to_server, args=(path,), daemon=True).start()
+
+    # Send image data to the server
+    def upload_to_server(self, image_path):
+        # Print a user text box to ensure users know that their image has been sent
+        try:
+            self.ids.chat_list.add_widget(self._make_chat_bubble(f"You: Image", is_user=True))
+            Clock.schedule_once(self._scroll_chat_to_bottom, 0)
+        except Exception as e:
+            print("Failed to update chat list:", e)
+
+        try:
+            with open(image_path, 'rb') as f:
+                files = {'imageFile': (os.path.basename(image_path), f, 'image/jpeg')}
+
+                response = requests.post(
+                    "https://farmersbot-ai-assistant.onrender.com/image",
+                    files=files,
+                    timeout=180
+                )
+                
+                if response.status_code == 200:
+                    reply = response.json()["reply"]
+                    print("Server replied:", reply)
+                    Clock.schedule_once(lambda dt: self.show_reply(reply)) # Schedule server reply because there are some concurrent events
+                else:
+                    print(f"Upload failed (Status {response.status_code}): {response.text}")
+                    Clock.schedule_once(lambda dt: self.show_reply(f"Server error: {response.text}"))
+                    
+        except Exception as e:
+            toast("An error was encountered")
+            print("Failed to send message: ", str(e))
+
 class SettingsPage(Screen):
     error_message = StringProperty("")
     selected_subcounty = ""
 
     def on_pre_enter(self, *args):
         app = App.get_running_app()
-        self.ids.settings_username.text = app.current_username or ""
-        self.ids.settings_password.text = ""
+        card = self.ids.settings_card
+        card.ids.username_input.text = app.current_username or ""
+        card.ids.password_input.text = ""
         self.selected_subcounty = app.current_subcounty or ""
-        self.ids.settings_subcounty.text = self.selected_subcounty or "Select subcounty"
+        card.ids.subcounty_field.text = self.selected_subcounty or "Select subcounty"
 
         if app.current_input_type == "audio":
-            self.ids.settings_audio.active = True
-            self.ids.settings_text.active = False
+            card.ids.audio_check.active = True
+            card.ids.text_check.active = False
         else:
-            self.ids.settings_audio.active = False
-            self.ids.settings_text.active = True
+            card.ids.audio_check.active = False
+            card.ids.text_check.active = True
+
+    # Allows users to exist settings page
+    def go_back(self):
+        app = App.get_running_app()
+        self.manager.current = "textinput" if app.current_input_type == "text" else "audioinput"
 
     def open_subcounty_menu(self):
         subcounties = [
-            "Mvita",
-            "Kisumu Central",
-            "Kitui West",
+            "Ainabkoi",
+            "Ainamoi",
+            "Aldai",
+            "Alego Usonga",
+            "Athi River",
+            "Awendo",
+            "Balambala",
+            "BANISSA",
+            "Baringo Central",
+            "Baringo North",
+            "Belgut",
+            "Bobasi",
+            "Bomachoge Borabu",
+            "Bomachoge Chache",
+            "Bomet Central",
+            "Bomet East",
+            "Bonchari",
+            "Bondo",
+            "Borabu",
             "Bumula",
-            "Nyakach"
+            "Bunyala",
+            "Bura",
+            "Bureti",
+            "Butere",
+            "Butula",
+            "Buuri",
+            "Changamwe",
+            "Chepalungu",
+            "Cheptais",
+            "Cherengany",
+            "Chesumei",
+            "Chuka",
+            "Dadaab",
+            "Dagoretti North",
+            "Dagoretti South",
+            "East Pokot",
+            "Eldas",
+            "Embakasi Central",
+            "Embakasi East",
+            "Embakasi North",
+            "Embakasi South",
+            "Embakasi West",
+            "Emgwen",
+            "Emuhaya",
+            "Endebess",
+            "Fafi",
+            "Galole",
+            "Ganze",
+            "Garbatulla",
+            "Garissa",
+            "Garsen",
+            "Gatanga",
+            "Gatundu North",
+            "Gem",
+            "Gilgil",
+            "Githunguri",
+            "Hamisi",
+            "Homa Bay Town",
+            "Hulugho",
+            "Igambang'ombe",
+            "Igembe Central",
+            "Igembe North",
+            "Igembe South",
+            "Ijara",
+            "Ikolomani",
+            "Imenti Central",
+            "Imenti North",
+            "Imenti South",
+            "Isiolo",
+            "Jomvu",
+            "Juja",
+            "Kabete"
+            "Kabondo Kasipul",
+            "Kabuchai",
+            "Kaiti",
+            "Kajiado Central",
+            "Kajiado East",
+            "Kajiado North",
+            "Kajiado West",
+            "Kalama",
+            "Kaloleni",
+            "Kamukunji",
+            "Kandara",
+            "Kandunyi",
+            "Kangemi",
+            "Kangundo",
+            "Kapsaret",
+            "Karachuonyo",
+            "Kasarani",
+            "Kasipul",
+            "Kathiani",
+            "Keiyo North",
+            "Keiyo South",
+            "Kesses",
+            "Khwisero",
+            "Kiambaa",
+            "Kiambu Town",
+            "Kibish",
+            "Kibra",
+            "Kibwezi East",
+            "Kibwezi West",
+            "Kieni East",
+            "Kieni West",
+            "Kigumo",
+            "Kiharu",
+            "Kikuyu",
+            "Kilifi North"
         ]
 
         menu_items = [
@@ -570,7 +727,7 @@ class SettingsPage(Screen):
 
     def set_subcounty(self, subcounty):
         self.selected_subcounty = subcounty
-        self.ids.settings_subcounty.text = subcounty
+        self.ids.settings_card.ids.subcounty_field.text = subcounty
         self.menu.dismiss()
 
     def save_settings(self):
@@ -581,9 +738,10 @@ class SettingsPage(Screen):
             self.error_message = "No user is logged in"
             return
 
-        new_username = self.ids.settings_username.text.strip()
-        new_password = self.ids.settings_password.text.strip()
-        input_type = "audio" if self.ids.settings_audio.active else "text"
+        card = self.ids.settings_card
+        new_username = card.ids.username_input.text.strip()
+        new_password = card.ids.password_input.text.strip()
+        input_type = "audio" if card.ids.audio_check.active else "text"
         subcounty = self.selected_subcounty
 
         payload = {
@@ -596,9 +754,9 @@ class SettingsPage(Screen):
 
         try:
             response = requests.post(
-                "https://random-qh2n.onrender.com/update_profile",
+                "https://farmersbot-ai-assistant.onrender.com/update_profile",
                 json=payload,
-                timeout=10
+                timeout=180
             )
 
             if response.status_code == 200:
