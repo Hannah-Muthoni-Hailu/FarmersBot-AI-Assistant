@@ -4,13 +4,29 @@
 
 # reusable background template for a "card"
 <CardTemplate@BoxLayout>:
-    is_login_mode: False
-    toggle_mode: lambda *args: None
+    is_login_mode: False # Controls the login/signup toggle
+
+    # Controls when the subcounty selection, input selection and back button are shown
+    show_input_type: True
+    show_subcounty: True
+    show_secondary: True
+
+    send_action: lambda *args: None
+    secondary_action: lambda *args: None
+    open_subcounty_action: lambda *args: None
+    error_message: ""
+    username_label: "Enter Username:"
+    password_label: "Enter Password:"
+    send_text: "SEND"
+    secondary_text: ""
+
     orientation: 'vertical'
-    size_hint: (None, None)
-    size: (400, 500)
+    size_hint: None, None
+    width: max(root.parent.width * 0.7, 300)
+    height: max(root.parent.height * 0.8, 500)
     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
     padding: 20
+    spacing: 8
     canvas.before:
         Color:
             rgba: (90/255), (150/255), (63/255), 1
@@ -21,10 +37,10 @@
     
     # User name input
     Label:
-        text: "Enter Username:"
+        text: root.username_label
         color: 0, 0, 0, 1
         size_hint_y: None
-        height: 30
+        height: 50
         text_size: self.size
         halign: 'left'
         valign: 'middle'
@@ -35,20 +51,20 @@
         multiline: False
         focus: True if self.collide_point(*self.parent.to_window(*self.pos)) else False
         size_hint_y: None
-        height: 30
+        height: 60
         size_hint_x: 0.8
         pos_hint: {'center_x': 0.5}
 
     # Spacer
     Widget:
-        size_hint_y: 0.05
+        size_hint_y: 0.005
 
     # Password input
     Label:
-        text: "Enter Password:"
+        text: root.password_label
         color: 0, 0, 0, 1
         size_hint_y: None
-        height: 30
+        height: 50
         text_size: self.size
         halign: 'left'
         valign: 'middle'
@@ -59,27 +75,28 @@
         multiline: False
         focus: True if self.collide_point(*self.parent.to_window(*self.pos)) else False
         size_hint_y: None
-        height: 30
+        height: 60
         size_hint_x: 0.8
         pos_hint: {'center_x': 0.5}
     
     Widget:
-        size_hint_y: 0.05
+        size_hint_y: 0.005
 
+    # Input type selection
     BoxLayout:
         id: input_type_container
         orientation: "vertical"
         size_hint_y: None
-        height: 0 if root.is_login_mode else 70 
-        opacity: 0 if root.is_login_mode else 1
-        disabled: root.is_login_mode
+        height: 0 if not root.show_input_type else 100
+        opacity: 0 if not root.show_input_type else 1
+        disabled: not root.show_input_type
         spacing: 5
 
         Label:
             text: "Select your preferred input type"
             color: 0, 0, 0, 1
             size_hint_y: None
-            height: 30
+            height: 50
             text_size: self.size
             halign: 'left'
             valign: 'middle'
@@ -89,7 +106,7 @@
             id: input_type_row
             orientation: "horizontal"
             size_hint_y: None
-            height: 30
+            height: 50
             size_hint_x: 0.8
             pos_hint: {'center_x': 0.5}
 
@@ -107,19 +124,19 @@
                 group: "input"
 
     Widget:
-        size_hint_y: 0.1
+        size_hint_y: 0.005
         
     MDBoxLayout:
         id: dropdown_menu
         orientation: "vertical"
-        size_hint_x: 0.8
+        size_hint_x: 0.9
         size_hint_y: None
-        height: 70 if not root.is_login_mode else 0
+        height: 70 if root.show_subcounty else 0
         pos_hint: {'center_x': 0.5}
-        opacity: 1 if not root.is_login_mode else 0
-        disabled: root.is_login_mode
+        opacity: 1 if root.show_subcounty else 0
+        disabled: not root.show_subcounty
         on_touch_down:
-            if self.collide_point(*args[1].pos): root.parent.parent.open_subcounty_menu()
+            if self.collide_point(*args[1].pos): root.open_subcounty_action()
 
         MDTextField:
             id: subcounty_field
@@ -127,33 +144,31 @@
             mode: "rectangle"
             readonly: True
 
-    
-    # Spacer (pushes the card down)
     Widget:
-        size_hint_y: 0.05
+        size_hint_y: 0.005
 
+    # Display error messages
     Label:
-        text: root.parent.parent.error_message
+        text: root.error_message
         color: 1, 0, 0, 1
         size_hint_y: None
-        height: 30
+        size_hint_x: 0.8
+        height: 60
         text_size: self.size
         halign: "center"
         valign: "middle"
-
     
     # Send Button
     Button:
         id: send_button
-        text: "SEND"
+        text: root.send_text
         size_hint: (0.5, None)
-        height: 50
+        height: 100
         pos_hint: {'center_x': 0.5}
         background_color: 0,0,0,0
         background_normal: ''
         on_press: 
-            root.parent.parent.process_signup() if not root.is_login_mode \
-            else root.parent.parent.process_login()
+            root.send_action()
         canvas.before:
             Color:
                 rgba: (179/255, 156/255, 77/255, 1)
@@ -164,17 +179,24 @@
     
     # Spacer
     Widget:
-        size_hint_y: 0.1
+        size_hint_y: 0.005
 
+    # Toggle between signup and login
     Button:
         id: toggle_mode_button
         background_color: 0,0,0,0
         color: 0, 0, 1, 1 # Blue link color
-        text:
-            "Already have an account? Login here" if not root.is_login_mode \
-            else "Don't have an account? Signup here"
+        text: root.secondary_text
+        size_hint_y: None
+        height: 40 if root.show_secondary else 0
+        opacity: 1 if root.show_secondary else 0
+        disabled: not root.show_secondary
         on_release:
-            root.toggle_mode()
+            root.secondary_action()
+
+    # Spacer
+    Widget:
+        size_hint_y: 0.005
 
 <SignupPage>:
     canvas.before:
@@ -184,39 +206,48 @@
             size: self.size
             pos: self.pos
 
-    BoxLayout:
-        orientation: "vertical"
+    FloatLayout: 
         size: root.size
         pos: root.pos
+        on_size: print("root size", self.size)
+        canvas.before:
+            Color:
+                rgba: 1, 0, 0, 1
 
-        # Green Horizontal Bar (top)
-        BoxLayout:
-            id: top_bar
-            size_hint_y: None
-            height: 50
-            canvas.before:
-                Color:
-                    rgba: (96/255), (119/255), (68/255), 1 
-                Rectangle:
-                    size: self.size
-                    pos: self.pos
-        
-        # Spacer (pushes the card down)
-        Widget:
-            size_hint_y: 0.5
-
-        # Green Card (centered)
+        # Card (centered)
         CardTemplate:
             id: signup_card
+            # Toggle between login and signup
             is_login_mode: root.is_login_mode
-            toggle_mode: root.toggle_mode
+            show_input_type: not root.is_login_mode
+            show_subcounty: not root.is_login_mode
+            show_secondary: True
+            send_action: root.process_login if root.is_login_mode else root.process_signup
+            secondary_action: root.toggle_mode
+            open_subcounty_action: root.open_subcounty_menu
+            error_message: root.error_message
+            secondary_text:
+                "Already have an account? Login here" if not root.is_login_mode \
+                else "Don't have an account? Signup here"
             # Reuses the CardTemplate style
 
-        # Spacer (pushes the card up)
-        Widget:
-            size_hint_y: 0.5
+<CameraPopup@ModalView>:
+    size_hint: 0.9, 0.9
+    auto_dismiss: False
+    BoxLayout:
+        orientation: 'vertical'
+        Preview:
+            id: preview
+        Button:
+            text: "Take Photo"
+            size_hint_y: 0.15
+            on_press: root.do_capture()
+        Button:
+            text: "Close"
+            size_hint_y: 0.1
+            on_press: root.dismiss()
 
-<AudioInput>:
+<AudioInputScreen>:
     canvas.before:
         Color:
             rgba: 1, 1, 1, 1
@@ -230,12 +261,12 @@
         pos: root.pos
         size_hint_y: None
 
-        # Green Horizontal Bar (top)
+        # Green Horizontal Bar at the top
         BoxLayout:
             id: top_bar
             orientation: "horizontal"
             size_hint_y: None
-            height: 50
+            height: 100
             canvas.before:
                 Color:
                     rgba: (96/255), (119/255), (68/255), 1 
@@ -253,16 +284,10 @@
                 background_color: 0,0,0,0
                 on_press: app.root.current = "settings"
 
-        RecycleView:
-            MDList:
-                id: chat_list
-
         RelativeLayout:
             size_hint: None, None
             size: 300, 300  # This defines the circular area
             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-
-            # 1. Draw the Circular Background
             canvas.before:
                 Color:
                     rgba: (96/255), (119/255), (68/255), 1
@@ -271,15 +296,17 @@
                     pos: 0, 0
                     size: self.size
 
+            # Controls audio recording and playback
             MDIconButton:
                 id: record_audio
                 icon: "microphone"
-                font_size: "100sp"  # Adjust this to change the icon's size ONLY
+                font_size: "100sp"
                 theme_text_color: "Custom"
                 text_color: 1, 1, 1, 1
                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                on_release: root.record_audio()
+                on_release: root.start_recording() if not root.is_recording else root.stop_recording()
 
+            # Loading spinner animation
             MDSpinner:
                 id: audio_spinner
                 size_hint: None, None
@@ -291,11 +318,12 @@
             Button:
                 background_color: 0, 0, 0, 0
                 size_hint: 1, 1
-                on_release: root.record_audio()
+                on_release: root.start_recording() if not root.is_recording else root.stop_recording()
 
         Widget:
             size_hint_y: 1
 
+        # Capture image for the audio page
         MDIconButton:
             icon: "camera"
             md_bg_color: (96/255), (119/255), (68/255), 1
@@ -318,12 +346,12 @@
         size: root.size
         pos: root.pos
 
-        # Green Horizontal Bar (top)
+        # Green Horizontal Bar at the top
         BoxLayout:
             id: top_bar
             orientation: "horizontal"
             size_hint_y: None
-            height: 50
+            height: 100
             canvas.before:
                 Color:
                     rgba: (96/255), (119/255), (68/255), 1 
@@ -334,6 +362,7 @@
             Widget:
                 size_hint_x: 1
 
+            # Button for navigating to the settings page
             Button:
                 text: "Settings"
                 size_hint_x: None
@@ -343,14 +372,14 @@
 
         RecycleView:
             MDList:
-                id: chat_list
+                id: chat_list # Holder for the chat bubble generated in main.py
 
-
+        # Text input panel
         BoxLayout:
             id: input_panel
             orientation: "horizontal"
             size_hint_y: None
-            height: 60
+            height: 100
             padding: 10
             spacing: 10
             canvas.before:
@@ -366,6 +395,7 @@
                 multiline: False
                 size_hint_x: 0.8
 
+            # Send text input to server button
             Button:
                 id: send
                 text: "Send"
@@ -380,6 +410,7 @@
                         radius: [10]
                 on_press: root.send_message()
 
+            # Image capture button
             MDIconButton:
                 icon: "camera"
                 md_bg_color: (96/255), (119/255), (68/255), 1
@@ -397,187 +428,25 @@
             size: self.size
             pos: self.pos
 
-    BoxLayout:
-        orientation: "vertical"
+    FloatLayout:
         size: root.size
         pos: root.pos
 
-        BoxLayout:
-            id: top_bar
-            orientation: "horizontal"
-            size_hint_y: None
-            height: 50
-            canvas.before:
-                Color:
-                    rgba: (96/255), (119/255), (68/255), 1 
-                Rectangle:
-                    size: self.size
-                    pos: self.pos
+        # Green card
+        CardTemplate:
+            id: settings_card
 
-        Widget:
-            size_hint_y: 0.1
-
-        BoxLayout:
-            orientation: 'vertical'
-            size_hint: (None, None)
-            size: (400, 500)
-            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-            padding: 20
-            canvas.before:
-                Color:
-                    rgba: (90/255), (150/255), (63/255), 1
-                RoundedRectangle:
-                    size: self.size
-                    pos: self.pos
-                    radius: [20, 20, 20, 20]
-
-            Label:
-                text: "Username:"
-                color: 0, 0, 0, 1
-                size_hint_y: None
-                height: 30
-                text_size: self.size
-                halign: 'left'
-                valign: 'middle'
-                padding_x: 35
-
-            FocusTextInput:
-                id: settings_username
-                multiline: False
-                size_hint_y: None
-                height: 30
-                size_hint_x: 0.8
-                pos_hint: {'center_x': 0.5}
+            # Set the template to display components for the settings page
+            is_login_mode: False
+            show_input_type: True
+            show_subcounty: True
+            show_secondary: True
+            send_action: root.save_settings
+            secondary_action: root.go_back
+            open_subcounty_action: root.open_subcounty_menu
             
-            # Spacer
-            Widget:
-                size_hint_y: 0.05
-
-            Label:
-                text: "Password (leave blank to keep)"
-                color: 0, 0, 0, 1
-                size_hint_y: None
-                height: 30
-                text_size: self.size
-                halign: 'left'
-                valign: 'middle'
-                padding_x: 35
-
-            FocusTextInput:
-                id: settings_password
-                multiline: False
-                size_hint_y: None
-                height: 30
-                size_hint_x: 0.8
-                pos_hint: {'center_x': 0.5}
-            
-            Widget:
-                size_hint_y: 0.05
-
-            BoxLayout:
-                orientation: "vertical"
-                size_hint_y: None
-                height: 70
-                spacing: 5
-
-                Label:
-                    text: "Preferred input type"
-                    color: 0, 0, 0, 1
-                    size_hint_y: None
-                    height: 30
-                    text_size: self.size
-                    halign: "left"
-                    valign: "middle"
-                    padding_x: 35
-
-                BoxLayout:
-                    orientation: "horizontal"
-                    size_hint_y: None
-                    height: 30
-                    size_hint_x: 0.8
-                    pos_hint: {'center_x': 0.5}
-
-                    Label:
-                        text: "Audio"
-                        color: 0,0,0,1
-                    CheckBox:
-                        id: settings_audio
-                        group: "settings_input"
-                    Label:
-                        text: "Text"
-                        color: 0,0,0,1
-                    CheckBox:
-                        id: settings_text
-                        group: "settings_input"
-
-            Widget:
-                size_hint_y: 0.05
-
-            MDBoxLayout:
-                id: settings_dropdown
-                orientation: "vertical"
-                size_hint_x: 0.8
-                size_hint_y: None
-                height: 70
-                pos_hint: {'center_x': 0.5}
-                on_touch_down:
-                    if self.collide_point(*args[1].pos): root.open_subcounty_menu()
-
-                MDTextField:
-                    id: settings_subcounty
-                    hint_text: "Select subcounty"
-                    mode: "rectangle"
-                    readonly: True
-
-            Widget:
-                size_hint_y: 0.05
-
-            Label:
-                text: root.error_message
-                color: 1, 0, 0, 1
-                size_hint_y: None
-                height: 30
-                text_size: self.size
-                halign: "center"
-                valign: "middle"
-
-            Widget:
-                size_hint_y: 0.05
-
-            BoxLayout:
-                orientation: "horizontal"
-                size_hint_y: None
-                height: 50
-                spacing: 10
-
-                Button:
-                    text: "Back"
-                    size_hint_x: 0.5
-                    background_color: 0,0,0,0
-                    background_normal: ''
-                    on_press: app.root.current = "textinput" if app.current_input_type == "text" else "audioinput"
-                    canvas.before:
-                        Color:
-                            rgba: (150/255, 150/255, 150/255, 1)
-                        RoundedRectangle:
-                            size: self.size
-                            pos: self.pos
-                            radius: [10]
-
-                Button:
-                    text: "Save"
-                    size_hint_x: 0.5
-                    background_color: 0,0,0,0
-                    background_normal: ''
-                    on_press: root.save_settings()
-                    canvas.before:
-                        Color:
-                            rgba: (179/255, 156/255, 77/255, 1)
-                        RoundedRectangle:
-                            size: self.size
-                            pos: self.pos
-                            radius: [10]
-            Widget:
-                size_hint_y: 0.05
-        Widget:
-            size_hint_y: 0.1
+            error_message: root.error_message
+            username_label: "Enter Username:"
+            password_label: "Password (leave blank to keep)"
+            send_text: "SAVE"
+            secondary_text: "Back"
