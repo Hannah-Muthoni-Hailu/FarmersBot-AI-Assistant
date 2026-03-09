@@ -34,13 +34,15 @@ import subprocess
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
-SECRET_KEY = "CHANGE_THIS"
+# Secret key and algorithm for the json token
+SECRET_KEY = os.environ.get("SECRET_KEY")
 ALGORITHM = "HS256"
 
 app = FastAPI()
 
+# Setting a base directory where data generated will be stored
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "ai_models", "best_intent_model.joblib")
+MODEL_PATH = os.path.join(BASE_DIR, "ai_models", "best_intent_model.joblib") # Path to intent model
 
 # Load treatments for prescription generation
 with open(os.path.join(BASE_DIR, "data", "treatments.json"), 'r') as file:
@@ -64,11 +66,10 @@ pending_intent = None
 
 # Simulation data
 crop_sim_data = {}
+# Set subcounty data
 subcounty_files = os.path.join(BASE_DIR, "data", "subcounties.json")
-
 with open(subcounty_files, 'r') as file:
     subcounty_data = json.load(file)
-
 subcounties = subcounty_data["subcounties"]
 subcounty_lats = subcounty_data["latitudes"]
 subcounty_lons = subcounty_data["longitudes"]
@@ -79,11 +80,11 @@ client = MongoClient(uri, server_api=ServerApi('1'))
 db = client.farmersbot
 users_collection = db.users
 
-# Data validation model
+# Data validation models
 class UserSignup(BaseModel):
     username: str
     password: str
-    input_type: str  # Expecting "audio" or "text"
+    input_type: str
     subcounty: str
 
 class UserLogin(BaseModel):
@@ -93,12 +94,6 @@ class UserLogin(BaseModel):
 class UserMessage(BaseModel):
     message: str
 
-class UserImage(BaseModel):
-    files: UploadFile
-
-class UserAudioImage(BaseModel):
-   text: str
-
 class UserUpdate(BaseModel):
     current_username: str
     new_username: Optional[str] = None
@@ -106,11 +101,13 @@ class UserUpdate(BaseModel):
     input_type: Optional[str] = None
     subcounty: Optional[str] = None
 
+# Handle signup
 @app.post("/signup")
 def signup(data: UserSignup):
     global crop_sim_data
 
     try:
+        # Check if username already exists
         existing = users_collection.find_one({"username": data.username})
         if existing:
             raise HTTPException(400, "Username already exists")
@@ -127,7 +124,8 @@ def signup(data: UserSignup):
         crop_sim_data['location'] = data.subcounty
         crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
         crop_sim_data['longitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
-
+        
+        # Create authentication token to save login state
         token = jwt.encode(
             {
                 "sub": data.username,
@@ -148,7 +146,7 @@ def login(data: UserLogin):
     try:        
         user = users_collection.find_one({"username": data.username})
         
-        if not user or not verify_password(data.password, user["password_hash"]):
+        if not user or not verify_password(data.password, user["password_hash"]): # Check that the correct password has been given
             raise HTTPException(401, "Invalid credentials")
     
         if user['subcounty'] not in subcounties:
@@ -157,7 +155,8 @@ def login(data: UserLogin):
         crop_sim_data['location'] = user['subcounty']
         crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
         crop_sim_data['longitude'] = subcounty_lons[subcounties.index(crop_sim_data['location'])]
-    
+
+        # Create authentication token to save login state
         token = jwt.encode(
             {
                 "sub": user['username'],
@@ -171,14 +170,16 @@ def login(data: UserLogin):
     except Exception as e:
         raise HTTPException(500, f"Login failed: {str(e)}")
 
+# Handle text-based input
 @app.post("/message")
 def handle_message(data: UserMessage):
     try:
-        reply = handle_intent(data.message.lower())
+        reply = handle_intent(data.message.lower()) # Send text to determine intent
         return {"reply": reply}
     except Exception as e:
         raise HTTPException(500, str(e))
 
+# Handle image input from text page
 @app.post("/image")
 def handle_image(imageFile: UploadFile = File(...),):
     global IMAGE
@@ -190,7 +191,7 @@ def handle_image(imageFile: UploadFile = File(...),):
         
         IMAGE = os.path.join('uploads', imageFile.filename)
         
-        # Save the file using shutil (FastAPI doesn't have .save())
+        # Save the file using shutil
         with open(IMAGE, "wb") as buffer:
             shutil.copyfileobj(imageFile.file, buffer)
 
@@ -202,6 +203,7 @@ def handle_image(imageFile: UploadFile = File(...),):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Handle image input from audio page
 @app.post("/image_audio")
 def handle_image_audio(imageFile: UploadFile = File(...),):
     global IMAGE
@@ -210,7 +212,6 @@ def handle_image_audio(imageFile: UploadFile = File(...),):
     try:
         load_audio_models()
         os.makedirs('uploads', exist_ok=True)
-        
         IMAGE = os.path.join('uploads', imageFile.filename)
         
         # Save the file using shutil (FastAPI doesn't have .save())
@@ -231,109 +232,78 @@ def handle_image_audio(imageFile: UploadFile = File(...),):
     except Exception as e:
         raise HTTPException(500, f"{str(e)}")
 
-# To remove
-COUNTER = 0
-    
-@app.post("/audio")
+# Handle audio input
 def handle_audio(audio_file: UploadFile = File(...)):
-    global COUNTER
-    load_audio_models()
+    if not audio_file.filename.endswith(('.3gp', '.wav', '.mp3')):
+        raise HTTPException(status_code=400, detail="Unsupported audio format")
 
-    if COUNTER == 0:
-        reply = "Hello. How may I help you"
-    elif COUNTER == 1:
-        reply = "Your expected harvest date is August 2nd 2026. With optimal conditions, you can expect a yeild of 1536 kilograms per hectare. The total amount of water you can expect to use is 5000 tonnes per hectare"
-        COUNTER = -1
+    try:
+        load_audio_models()
+    except Exception as e:
+        raise HTTPException(500, f"Error loading audio models: {str(e)}")
+    
+    try:
+        os.makedirs('uploads', exist_ok=True)
+        temp_input_path = os.path.join('uploads', audio_file.filename)
+        wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
+        
+        with open(temp_input_path, "wb+") as file_object:
+            shutil.copyfileobj(audio_file.file, file_object)
 
-    base64_string = tts_client.predict(
+         # Convert to WAV
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i", temp_input_path,
+                "-ar", "16000",      # sample rate
+                "-ac", "1",          # mono
+                "-f", "wav",
+                wav_path
+            ],
+            check=True
+        )
+
+        # Convert audio to text
+        with wave.open(wav_path, "rb") as audio:
+            rec = KaldiRecognizer(att_model, 16000)
+            all_frames = audio.readframes(audio.getnframes())
+            rec.AcceptWaveform(all_frames)
+            result_text = json.loads(rec.FinalResult())["text"]
+
+        reply = handle_intent(result_text)
+
+        base64_string = tts_client.predict(
             text=reply,
             voice="af_heart",
             api_name="/generate_speech_as_bytes"
         )
-    
-    COUNTER += 1
-    return {"reply": reply, "audio": f"{base64_string}"}
 
-# def handle_audio(audio_file: UploadFile = File(...)):
-#     if not audio_file.filename.endswith(('.3gp', '.wav', '.mp3')):
-#         raise HTTPException(status_code=400, detail="Unsupported audio format")
+        return {"reply": reply, "audio": f"{base64_string}"}
 
-#     try:
-#         load_audio_models()
-#     except Exception as e:
-#         raise HTTPException(500, f"Error loading audio models: {str(e)}")
-    
-#     try:
-#         os.makedirs('uploads', exist_ok=True)
-#         temp_input_path = os.path.join('uploads', audio_file.filename)
-#         wav_path = os.path.join('uploads', f"conv_{int(time.time())}.wav")
-        
-#         with open(temp_input_path, "wb+") as file_object:
-#             shutil.copyfileobj(audio_file.file, file_object)
+    except Exception as e:
+        raise HTTPException(500, f"{str(e)}")
+    finally:
+        audio_file.file.close()
+        for path in [temp_input_path, wav_path]:
+            if os.path.exists(path):
+                os.remove(path)
 
-#          # Convert to WAV
-#         # os.system(f"ffmpeg -i {temp_input_path} {wav_path}")
-#         subprocess.run(
-#             [
-#                 "ffmpeg",
-#                 "-y",
-#                 "-i", temp_input_path,
-#                 "-ar", "16000",      # sample rate
-#                 "-ac", "1",          # mono
-#                 "-f", "wav",
-#                 wav_path
-#             ],
-#             check=True
-#         )
-
-#         # Convert audio to text
-#         with wave.open(wav_path, "rb") as audio:
-#             rec = KaldiRecognizer(att_model, 16000)
-#             all_frames = audio.readframes(audio.getnframes())
-#             rec.AcceptWaveform(all_frames)
-#             result_text = json.loads(rec.FinalResult())["text"]
-
-#         reply = handle_intent(result_text)
-
-#         base64_string = tts_client.predict(
-#             text=reply,
-#             voice="af_heart",
-#             api_name="/generate_speech_as_bytes"
-#         )
-
-#         return {"reply": reply, "audio": f"{base64_string}"}
-
-#     except Exception as e:
-#         raise HTTPException(500, f"{str(e)}")
-#     finally:
-#         audio_file.file.close()
-#         for path in [temp_input_path, wav_path]:
-#             if os.path.exists(path):
-#                 os.remove(path)
-
-@app.get("/audio/{filename}")
-def get_audio(filename: str, background_tasks: BackgroundTasks):
-    audio_path = os.path.join(BASE_DIR, "data", filename)
-    print("Audio path server: ", audio_path)
-
-    if not os.path.isfile(audio_path):
-        raise HTTPException(404, "Audio file not found")
-    
-    background_tasks.add_task(os.remove, audio_path)
-    return FileResponse(audio_path, media_type="audio/wav", filename=filename)
-
+# Handle setting changes
 @app.post("/update_profile")
 def update_profile(data: UserUpdate):
     user = users_collection.find_one({"username": data.current_username})
     if not user:
         raise HTTPException(404, "User not found")
 
+    # Make sure the new username is not the same as the existing one
     if data.new_username and data.new_username != data.current_username:
         existing = users_collection.find_one({"username": data.username})
         if existing:
             raise HTTPException(400, "Username already exists")
         user['username'] = data.new_username
 
+    # Check which data the user wants to change
     if data.new_password:
         if len(data.new_password) > 256:
             raise HTTPException(400, "Password too long")
@@ -361,7 +331,7 @@ def update_profile(data: UserUpdate):
 
     return {
         "username": user['username'],
-        "input_type": user['input_type'],
+        "input_type": user['input_type'], # Return input type which will allow the interaction method to be changed on the frontend
         "subcounty": user['subcounty']
     }
 
@@ -430,7 +400,7 @@ def load_audio_models():
             raise HTTPException(500, f"Error loading att model: {str(e)}")
 
 
-
+# Ensures that a crop has been provided by the user
 def get_simulation_data(text, crop_sim_data):
     try:
         load_sim_models() # load the simulation model and set crop
@@ -444,8 +414,8 @@ def get_simulation_data(text, crop_sim_data):
     crop_name = ""
     crop_variety = ""
     
-    if 'crop_name' not in crop_sim_data.keys():
-        for crop in possible_crops:
+    if 'crop_name' not in crop_sim_data.keys(): # Checks if crop name was already given previously
+        for crop in possible_crops: # Check which crop has been give
           if crop in text:
             crop_name = crop
             crop_variety = list(crop_data.get_crops_varieties()[crop_name])[0]
@@ -461,6 +431,7 @@ def get_simulation_data(text, crop_sim_data):
     
     return needed
 
+# Create agromanagement file
 def define_agromanagement(crop_name, crop_variety, start_date, end_date, filename):
   content = f"""Version: 1.0
 AgroManagement:
@@ -482,61 +453,18 @@ AgroManagement:
 
   return filename
 
-def get_weather_data(latitude, longitude):
-    import requests
-    from datetime import date
-    
-    start_date = "20000101"  # YYYYMMDD
-    end_date = date.today().strftime("%Y%m%d")
-    
-    # Use a valid username (not 'anonymous')
-    username = "farmersbot"
-    
-    url = (
-        "https://power.larc.nasa.gov/api/temporal/daily/point"
-        f"?request=execute"
-        f"&parameters=TOA_SW_DWN,ALLSKY_SFC_SW_DWN,T2M,T2M_MIN,T2M_MAX,T2MDEW,WS2M,PRECTOTCORR"
-        f"&latitude={latitude}&longitude={longitude}"
-        f"&start={start_date}&end={end_date}"
-        f"&community=AG&format=JSON"
-        f"&user={username}"
-    )
-    
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise Exception(f"NASA POWER API failed with code {response.status_code}: {response.text}")
-    data = response.json()
-
-    weather_list = []
-
-    daily_data = data['properties']['parameter']
-    dates = daily_data['T2M'].keys()  # The keys are dates like "20000101"
-    
-    for d in dates:
-        weather_list.append({
-            'YEAR': int(d[:4]),
-            'DOY': int(date(int(d[:4]), int(d[4:6]), int(d[6:])).timetuple().tm_yday),
-            'T2M': daily_data['T2M'][d],
-            'T2M_MIN': daily_data['T2M_MIN'][d],
-            'T2M_MAX': daily_data['T2M_MAX'][d],
-            'T2MDEW': daily_data['T2MDEW'][d],
-            'WS2M': daily_data['WS2M'][d],
-            'PRECTOTCORR': daily_data['PRECTOTCORR'][d],
-            'ALLSKY_SFC_SW_DWN': daily_data['ALLSKY_SFC_SW_DWN'][d],
-            'TOA_SW_DWN': daily_data['TOA_SW_DWN'][d]
-        })
-        
-    return weather_list
-
+# Perform the actual simulation
 def run_simulation():
     global intent
     global crop_sim_data
     global pending_intent
 
+    # Re-import needed packages here to prevent slowed down startup since a number of databases need to be built
     from pcse.base import ParameterProvider
     from pcse.models import Wofost71_PP
     from pcse.input import YAMLAgroManagementReader, OpenMeteoWeatherDataProvider, YAMLCropDataProvider, NASAPowerWeatherDataProvider, WOFOST72SiteDataProvider, CABOFileReader
 
+    # Hard-coded length of crop growth
     planting_duration = {
         "barley": 6,
         "cassava": 13,
@@ -594,6 +522,7 @@ def run_simulation():
                 return f"{n}th"
             return f"{n}{['th','st','nd','rd','th','th','th','th','th','th'][n % 10]}"
 
+        # Check which end date type was returned
         if summary['DOA']:
             new_date = summary['DOA'] + relativedelta(years=1)
             harvest_date = f"{new_date.strftime('%B')} {ordinal(new_date.day)} {new_date.year}"
@@ -610,11 +539,12 @@ def run_simulation():
             harvest_date = None
     
         output = model.get_output()
+        # Calculate total water usage based on transpiration and evaporation quantities
         total_transpiration = sum(day['TRA'] for day in output if day['TRA'] is not None)
         total_evaporation = summary['CEVST']
         total_water_use = total_transpiration + total_evaporation * 100000
 
-        yeild = summary['TWSO']
+        yeild = summary['TWSO'] # Yield equals weight of storage organs
         
         intent = None
         pending_intent = None
@@ -622,7 +552,7 @@ def run_simulation():
         del crop_sim_data['crop_variety']
 
         if harvest_date and yeild and total_water_use:
-            return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yeild of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
+            return f"Your expected harvest date is {harvest_date}. With optimal conditions, you can expect a yield of {yeild} per hectare. The total amount of water you can expect to use is {total_water_use}"
         else:
             return "We are sorry but the simulation could not be performed. Please try again later or try a different crop"
 
@@ -640,12 +570,12 @@ def analyze_image():
         intent = None
         issues = []
     
-        diseases = disease_client.image_classification(IMAGE, model="linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification")[0]['label']
+        diseases = disease_client.image_classification(IMAGE, model="linkanjarad/mobilenet_v2_1.0_224-plant-disease-identification")[0]['label'] # Identify diseases
     
         pests = pest_client.predict(
             img=handle_file(IMAGE),
             api_name="/predict_pest"
-        )
+        ) # Identify pest
 
         raw_list = ast.literal_eval(pests)
         pests = list(dict.fromkeys(raw_list))
@@ -656,10 +586,10 @@ def analyze_image():
     if diseases.split(' ')[0].lower() != 'healthy':
        issues.append(diseases)
 
-    # 1. Define the starting phrase
+    # Define the starting phrase
     base_string = "The following issues were identified in your crop: "
 
-    # 2. Create a list of formatted strings for each key-value pair
+    # Create a list of formatted strings for each key-value pair
     issue_descriptions = [f"Issue: {issue}, Treatment: {treatments[issue]}" for issue in issues]
     
     try:
@@ -669,7 +599,7 @@ def analyze_image():
         print("Failed to delete image:", e)
 
     if len(issues) > 0:
-       return base_string + ", ".join(issue_descriptions) + "."
+       return base_string + ", ".join(issue_descriptions) + "." # Combine starting phrase and list of issues and treatments
     else:
        return "Your crops seem fine"
 
@@ -689,6 +619,7 @@ def handle_intent(text):
         except Exception as e:
             raise HTTPException(500, f"Error predicting intent: {str(e)}")
 
+    # Simulation intent
     if intent == "crop_simulation" or pending_intent == 'crop simulation': # Pending intent will only be passed here on the second call to crop simulation
         needed = get_simulation_data(text, crop_sim_data)
         
@@ -709,6 +640,7 @@ def handle_intent(text):
 
         return reply
 
+    # Crop growth analysis
     elif intent == "crop_growth_analysis" or pending_intent == 'crop_growth_analysis':
         if not IMAGE:
             if not pending_intent:
@@ -726,6 +658,7 @@ def handle_intent(text):
                 raise HTTPException(500, f"{str(e)}")
 
         return reply
+    # General conversation
     else:
         intent = None
         try:
