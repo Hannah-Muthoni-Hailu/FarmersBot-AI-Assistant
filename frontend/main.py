@@ -299,7 +299,7 @@ class SignupPage(Screen):
     def toggle_mode(self):
         self.is_login_mode = not self.is_login_mode
 
-class AudioInput(Screen):
+class AudioInputScreen(Screen):
     is_recording = False
 
     def __init__(self, **kwargs):
@@ -781,7 +781,7 @@ class ChatApp(MDApp):
         sm = ScreenManager()
         sm.add_widget(SignupPage(name="signuppage"))
         sm.add_widget(TextInputScreen(name="textinput"))
-        sm.add_widget(AudioInput(name="audioinput"))
+        sm.add_widget(AudioInputScreen(name="audioinput"))
         sm.add_widget(SettingsPage(name="settings"))
         return sm
 
