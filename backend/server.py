@@ -127,8 +127,17 @@ def signup(data: UserSignup):
         crop_sim_data['location'] = data.subcounty
         crop_sim_data['latitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
         crop_sim_data['longitude'] = subcounty_lats[subcounties.index(crop_sim_data['location'])]
+
+        token = jwt.encode(
+            {
+                "sub": data.username,
+                "exp": datetime.utcnow() + timedelta(days=7)
+            },
+            SECRET_KEY,
+            algorithm=ALGORITHM
+        )
         
-        return {"status": "success", "message": "User registered successfully"}
+        return {"access_token": token, "status": "success", "message": "User registered successfully"}
     except Exception as e:
         raise HTTPException(500, f"Signup failed: {str(e)}")
 
