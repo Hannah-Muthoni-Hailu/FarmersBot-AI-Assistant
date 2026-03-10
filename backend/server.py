@@ -176,7 +176,7 @@ def handle_message(data: UserMessage):
     try:
         # reply = handle_intent(data.message.lower()) # Send text to determine intent
         if "hello" in data.message.lower():
-            reply = "Hello! How can I assist you today? Would you like to discuss a specific topic or get some help with a particular task?
+            reply = "Hello! How can I assist you today? Would you like to discuss a specific topic or get some help with a particular task?"
         elif "simulate" in data.message.lower():
             reply = "Your expected harvest date is May 3rd 2026. With optimal conditions, you can expect a yeild of 1203.1795282755676 per hectare. The total amount of water you can expect to use is 2582922.5580429644"
         elif "analyze" in data.message.lower():
