@@ -28,7 +28,7 @@ sudo apt install -y \
 
 You also have the option of using a pre-built APK stored in the frontend/bin folder. Simply follow steps 1, 2, 6, 7 and 10 above. This saves time so that you don't have to build the application from scratch but could lead to unexpected errors due to differences in computer sytems.
 
-### Local Application
+### 2. Local Application
 You can choose to run the application locally on a computer using the following steps:
 1. Clone into the repository using ```git clone https://github.com/Hannah-Muthoni-Hailu/FarmersBot-AI-Assistant.git```
 2. Create a virtual environment
