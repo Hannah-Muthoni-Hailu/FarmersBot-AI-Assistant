@@ -174,7 +174,7 @@ def login(data: UserLogin):
 @app.post("/message")
 def handle_message(data: UserMessage):
     try:
-        reply = handle_intent(data.message.lower()) # Send text to determine intent
+        reply = handle_intent(data.message.lower()) # Send text to determine intent            
         return {"reply": reply}
     except Exception as e:
         raise HTTPException(500, str(e))
