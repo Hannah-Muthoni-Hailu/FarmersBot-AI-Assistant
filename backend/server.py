@@ -233,6 +233,7 @@ def handle_image_audio(imageFile: UploadFile = File(...),):
         raise HTTPException(500, f"{str(e)}")
 
 # Handle audio input
+@app.post("/audio")
 def handle_audio(audio_file: UploadFile = File(...)):
     if not audio_file.filename.endswith(('.3gp', '.wav', '.mp3')):
         raise HTTPException(status_code=400, detail="Unsupported audio format")
@@ -398,7 +399,6 @@ def load_audio_models():
             att_model = Model(model_name="vosk-model-small-en-us-0.15")
         except Exception as e:
             raise HTTPException(500, f"Error loading att model: {str(e)}")
-
 
 # Ensures that a crop has been provided by the user
 def get_simulation_data(text, crop_sim_data):
